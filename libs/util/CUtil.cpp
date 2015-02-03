@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		February 17, 2012
 File:		CUtil.cpp
 
-Last Modified Date: Jan 5, 2015
+Last Modified Date: Feb 3, 2015
 License:
 
 *
@@ -161,6 +161,29 @@ void get_date(char* pBuf_Year, char* pBuf_Month, char* pBuf_Day,
 	//		pBuf_Hour, pBuf_Min, pBuf_Sec, pBuf_Millisecond );
 
 	return;
+}
+
+bool get_uuid(char* buf, const int size) {
+	int year;
+	int month;
+	int day;
+	int hour;
+	int min;
+	int sec;
+	int millisecond;
+
+	if ( !buf || (size < g_INT_MAX_UUID_SIZE) ) {
+		return false;
+	}
+
+	get_date_d( &year, &month, &day, &hour, &min, &sec, &millisecond );
+	//fprintf( stdout, "[%d:%d:%d:%d:%d:%d:%d]\n",
+	//	year, month, day, hour, min, sec, millisecond );
+
+	snprintf( buf, size, "%d-%d-%d-%d-%d-%d-%d", 
+				year, month, day, hour, min, sec, millisecond );
+
+	return true;
 }
 
 //void print_datetime_d(void);

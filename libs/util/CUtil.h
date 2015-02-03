@@ -7,7 +7,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		February 17, 2012
 Filename:	CUtil.h
 
-Last modified: Nov 28, 2014
+Last modified: Feb 3, 2014
 License:
 
 *
@@ -36,11 +36,11 @@ Note:
 //! Headers / Library
 // --------------------------------------------------------------------------
 #include <iostream>
-#include <stdio.h>
-#include <time.h>
-#include <stdlib.h>		// labs()
-#include <string.h>
-#include <stdarg.h>
+#include <cstdio>		// <stdio.h>
+#include <cstdlib>		// <stdlib.h>, labs()
+#include <cstring>		// <string.h>
+#include <cstdarg>		// <stdarg.h>
+#include <ctime>		// <time.h>
 
 // libxml2
 // build opt: `xml2-config --cflags --libs`
@@ -64,6 +64,7 @@ Note:
 	#define g_STR_MAKE_LOG_FILENAME(str)	str##g_STR_LOG_FILENAME
 #endif	// __REQ_DEBUG_SHOW__
 
+#define g_INT_MAX_UUID_SIZE		24
 
 // Make a TAG string (String concatenation)
 //#define INIT_TAG(TAG, SUBTAG)	#TAG":"#SUBTAG	// shit... variable to string (no #SUBTAG, SUBTAG)
@@ -99,6 +100,7 @@ void get_date_d(int* pYear, int* pMonth, int* pDay,
 		int* pHour, int* pMin, int* pSec, int* pMillisecond);
 void get_date(char* pBuf_Year, char* pBuf_Month, char* pBuf_Day,
 		char* pBuf_Hour, char* pBuf_Min, char* pBuf_Sec, char* pBuf_Millisecond);
+bool get_uuid(char* buf, const int size);
 void print_datetime_d(void);
 void print_datetime(void);
 
