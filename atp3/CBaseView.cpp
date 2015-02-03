@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CBaseView.cpp
 
-Last modified: Jan 5, 2015
+Last modified: Feb 2, 2015
 License:
 
 *
@@ -363,6 +363,154 @@ void CBaseView::onTouchEventMove(CKeyEvent* event, float x, float y) {
 	//__LOGT__( TAG, "onTouchEventMove()" );
 	
 	//__LOGT__( TAG, "onTouchEventMove(): x = %f, y = %f", x, y );
+}
+
+void CBaseView::draw_paint_color(canvas_t* canvas, double r, double g, double b, double a) {
+	//__LOGT__( TAG, "draw_paint_color()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_paint_color(): canvas_t == NULL" );
+		return;
+	}
+
+	if ( a > 0 )
+		cairo_set_source_rgba( canvas, r, g, b, a );
+	else
+		cairo_set_source_rgb( canvas, r, g, b );
+}
+
+void CBaseView::draw_paint_color_fraction(canvas_t* canvas,
+		guint16 r, guint16 g, guint16 b, guint16 a) {
+	//__LOGT__( TAG, "draw_paint_color_fraction()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_paint_color_fraction(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		double f_r = PAINT_COLOR_UINT16_FRACTION_CAIRO( r );
+		double f_g = PAINT_COLOR_UINT16_FRACTION_CAIRO( g );
+		double f_b = PAINT_COLOR_UINT16_FRACTION_CAIRO( b );
+		double f_a = PAINT_COLOR_UINT16_FRACTION_CAIRO( a );
+
+		if ( a > 0 )
+			cairo_set_source_rgba( canvas, f_r, f_g, f_b, f_a );
+		else
+			cairo_set_source_rgb( canvas, f_r, f_g, f_b );
+	}
+}
+
+void CBaseView::draw_paint_color(canvas_t* canvas, bool fraction, ColorARGB_st color) {
+	//__LOGT__( TAG, "draw_paint_color()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_paint_color(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		if ( fraction ) {
+			draw_paint_color_fraction( canvas, color.r, color.g, color.b, color.a );
+		}
+		else {
+			double r, g, b, a;
+
+			a = (double)color.a;
+			r = (double)color.r;
+			g = (double)color.g;
+			b = (double)color.b;
+
+			draw_paint_color( canvas, r, g, b, a );
+		}
+	}
+}
+
+void CBaseView::draw_paint_color(canvas_t* canvas, bool fraction,
+		e_ObjAttachPaintColor_t color, guint16 a) {
+	//__LOGT__( TAG, "draw_paint_color()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_paint_color(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		guint16 r = 0;
+		guint16 g = 0;
+		guint16 b = 0;
+
+		/*
+		switch ( color ) {
+			case e_objAttachPaintColor_BLACK:
+			case e_objAttachPaintColor_BLUE:
+			case e_objAttachPaintColor_CYAN:
+			case e_objAttachPaintColor_DKGRAY:
+			case e_objAttachPaintColor_GRAY:
+			case e_objAttachPaintColor_GREEN:
+			case e_objAttachPaintColor_LTGRAY:
+			case e_objAttachPaintColor_MAGENTA:
+			case e_objAttachPaintColor_RED:
+			//case e_objAttachPaintColor_TRANSPARENT:
+			case e_objAttachPaintColor_WHITE:
+			case e_objAttachPaintColor_YELLOW:
+			default:
+				{
+					color = e_objAttachPaintColor_BLACK;
+				} break;
+		} // switch ()
+		*/
+
+
+		PAINT_COLOR_RGBA_16( color, &r, &g, &b );
+
+		//__LOGT__( TAG, "draw_paint_color(): R = %#x(h), G = %#x(h), B = %#x(h)",
+		//			r, g, b );
+		//__LOGT__( TAG, "draw_paint_color(): 16: R = %d, G = %d, B = %d", r, g, b );
+		//__LOGT__( TAG, "draw_paint_color(): 8: R = %d, G = %d, B = %d",
+		//			PAINT_COLOR_UINT16_8(r),
+		//			PAINT_COLOR_UINT16_8(g),
+		//			PAINT_COLOR_UINT16_8(b) );
+
+
+		if ( fraction ) {
+			draw_paint_color_fraction( canvas, r, g, b, a );
+		}
+		else {
+			draw_paint_color( canvas, (double)r, (double)g, (double)b, (double)a );
+		}
+	}
+}
+
+void CBaseView::draw_circle(canvas_t* canvas, float x, float y, double radius, bool fill) {
+	//__LOGT__( TAG, "draw_circle()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_circle(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		// move the drawing origin to the x and y
+		//cairo_translate( canvas, x, y );
+		
+		// add a new circular path to the cairo drawing context
+		//cairo_arc( canvas, x, y, radius, 0, (2 * M_PI) );
+
+		// the existing path is not affected before calling cairo_arc()
+		//cairo_new_sub_path( canvas );
+
+
+		cairo_new_sub_path( canvas );
+		cairo_arc( canvas, x, y, radius, 0, (2 * M_PI) );
+
+		if ( fill )
+			cairo_fill( canvas );
+
+
+		// draws the outline of the circle
+		//cairo_stroke_preserve( canvas );
+	}
 }
 // ---------------------------------------------------------------
 

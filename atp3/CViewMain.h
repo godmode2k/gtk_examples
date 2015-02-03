@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CViewMain.h
 
-Last modified: Jan 30, 2015
+Last modified: Feb 3, 2015
 License:
 
 *
@@ -41,8 +41,15 @@ Note:
 //! Header and Definition
 // ---------------------------------------------------------------
 #include <iostream>
-#include <cstdio>		//<stdio.h>
-#include <cstring>		//<string.h>
+#include <cstdio>		// <stdio.h>
+#include <cstring>		// <string.h>
+
+#ifdef __LINUX__
+	#include <sys/stat.h>	// stat
+	#include <pwd.h>		// struct passwd
+#else
+#endif
+
 
 /*
 #include <gtk-2.0/gtk/gtk.h>
@@ -82,6 +89,9 @@ Note:
 extern "C" {
 #endif
 
+#define TMP_OBJ_FONT_INFO__FONT_FAMILY_MAX_SIZE		255
+#define TAKE_SCREENSHOT__PATHNAME_MAX_SIZE			255
+
 typedef enum _e_objType_t {
 	e_objType_UNKNOWN = -1,
 	e_objType_RESERVED = 0,
@@ -103,7 +113,7 @@ typedef struct _tmp_obj_font_info_st {
 	bool selected_font;
 	bool selected_color;
 	bool selected_bg_img;
-	char family_name[255];
+	char family_name[TMP_OBJ_FONT_INFO__FONT_FAMILY_MAX_SIZE];
 	e_ObjAttachFontTypeface_t typeface;
 	bool bold;
 	double size;
@@ -181,6 +191,13 @@ private:
 	tmp_obj_font_info_st m_tmp_obj_font_info;
 	tmp_obj_bg_img_info_st m_tmp_obj_bg_img_info;
 
+	// Take a Screenshot
+	bool m_screenshot_region;
+	GdkRectangle m_screenshot_rect;
+	float m_screenshot_touchX, m_screenshot_touchY;
+	e_ObjAttachDirection_t m_screenshot_direction;
+	char m_screenshot_pathname[TAKE_SCREENSHOT__PATHNAME_MAX_SIZE];
+
 	//CViewAttach m_attach;		//! TEST
 protected:
 public:
@@ -234,6 +251,32 @@ public:
 
 	// ---------------------------------------------------------------
 
+	// Color
+	void draw_paint_color(canvas_t* canvas, double r, double g, double b, double a = 0);
+	void draw_paint_color_fraction(canvas_t* canvas,
+			guint16 r, guint16 g, guint16 b, guint16 a = 0);
+	void draw_paint_color(canvas_t* canvas, bool fraction, ColorARGB_st color);
+	void draw_paint_color(canvas_t* canvas, bool fraction,
+			e_ObjAttachPaintColor_t color, guint16 a = 0);
+
+	// Figure
+	void draw_circle(canvas_t* canvas, float x, float y, double radius, bool fill = false);
+
+	// ---------------------------------------------------------------
+	
+	void take_screenshot_get_str_direction(e_ObjAttachDirection_t direction);
+	e_ObjAttachDirection_t take_screenshot_get_selected_direction(GdkRectangle rect, float x, float y);
+	void take_screenshot_update_position(e_ObjAttachDirection_t direction, float x, float y);
+	bool take_screenshot_get_region(void);
+	void take_screenshot_set_region(bool set_region, bool init = true);
+	void take_screenshot_region(canvas_t* canvas);
+	const char* take_screenshot_get_pathname(void);
+	bool take_screenshot_save(void);
+	bool take_screenshot_save(int x, int y, int width, int height,
+		const char* filename, const e_takeScreenshot_t format = e_takeScreenshot_PNG);
+
+	// ---------------------------------------------------------------
+	
 	void add_obj_rect(obj_rect_list_st obj);
 	void add_obj_rect(e_ObjType_t type, GdkRectangle rect);
 	void set_obj_rect(e_ObjType_t type, GdkRectangle rect);

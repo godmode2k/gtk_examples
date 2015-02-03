@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CBaseView.h
 
-Last modified: Jan 24, 2015
+Last modified: Feb 2, 2015
 License:
 
 *
@@ -242,10 +242,38 @@ inline void PAINT_COLOR_SHOW(const ColorARGB_st color) {
 				PAINT_COLOR_UINT16_FRACTION_CAIRO(color.b) );
 }
 
+// Attached objact
+#define DEFAULT_DRAW_CIRCLE_RADIUS				8
+typedef enum _e_objAttachDirection_t {
+	e_objAttachDirection_UNKNOWN = -1,
+	e_objAttachDirection_RESERVED = 0,
+
+	e_objAttachDirection_LEFT = 1,
+	e_objAttachDirection_TOP,
+	e_objAttachDirection_RIGHT,
+	e_objAttachDirection_BOTTOM,
+	e_objAttachDirection_LEFT_TOP,
+	e_objAttachDirection_RIGHT_TOP,
+	e_objAttachDirection_LEFT_BOTTOM,
+	e_objAttachDirection_RIGHT_BOTTOM,
+	e_objAttachDirection_CENTER,
+	e_objAttachDirection_LEFT_CENTER,
+	e_objAttachDirection_TOP_CENTER,
+	e_objAttachDirection_RIGHT_CENTER,
+	e_objAttachDirection_BOTTOM_CENTER
+} e_ObjAttachDirection_t;
+
+// Popup Menu
 typedef enum _e_popupMenu_t {
 	e_popupMenu_UNKNOWN = 0,
 	e_popupMenu_ATTACHMENT_OBJ
 } e_popupMenu_t;
+
+// Screenshot
+typedef enum _e_takeScreenshot_t {
+	e_takeScreenshot_PNG = 0,
+	e_takeScreenshot_JPEG,
+} e_takeScreenshot_t;
 
 #ifdef __cplusplus
 }
@@ -342,6 +370,16 @@ public:
 	virtual void onTouchEventUp(CKeyEvent* event, float x, float y);
 	virtual void onTouchEventMove(CKeyEvent* event, float x, float y);
 
+	// Color
+	virtual void draw_paint_color(canvas_t* canvas, double r, double g, double b, double a = 0);
+	virtual void draw_paint_color_fraction(canvas_t* canvas,
+			guint16 r, guint16 g, guint16 b, guint16 a = 0);
+	virtual void draw_paint_color(canvas_t* canvas, bool fraction, ColorARGB_st color);
+	virtual void draw_paint_color(canvas_t* canvas, bool fraction,
+			e_ObjAttachPaintColor_t color, guint16 a = 0);
+
+	// Figure
+	virtual void draw_circle(canvas_t* canvas, float x, float y, double radius, bool fill = false);
 	// ---------------------------------------------------------------
 private:
 	virtual void _invalidate(void);

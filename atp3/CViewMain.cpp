@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CViewMain.cpp
 
-Last modified: Jan 30, 2015
+Last modified: Feb 3, 2015
 License:
 
 *
@@ -94,6 +94,15 @@ void CViewMain::__init(void) {
 	set_tmp_bg_img_info_release();
 
 
+	// Take a Screenshot
+	m_screenshot_region = false;
+	m_screenshot_rect.x = 50;
+	m_screenshot_rect.y = 50;
+	m_screenshot_rect.width = 100;
+	m_screenshot_rect.height = 100;
+	m_screenshot_touchX = m_screenshot_touchY = 0.f;
+	m_screenshot_direction = e_objAttachDirection_UNKNOWN;
+	memset( (void*)&m_screenshot_pathname, 0x00, sizeof(m_screenshot_pathname) );
 
 	//! TEST
 	// --------------------
@@ -235,8 +244,11 @@ void CViewMain::invalidate(CBaseView* view) {
 void CViewMain::draw(CBaseView* view) {
 	//__LOGT__( TAG, "draw()" );
 
-	// TODO:
-	
+	if ( !view ) {
+		__LOGT__( TAG, "draw(): CBaseView == NULL" );
+		return;
+	}
+
 
 	// Childs views
 	{
@@ -244,6 +256,21 @@ void CViewMain::draw(CBaseView* view) {
 		//m_attach.invalidate( view );
 
 		attach_invalidate( view );
+	}
+
+
+	// Screenshot
+	{
+		canvas_pt canvas = view->get_canvas();
+
+		if ( !canvas ) {
+			__LOGT__( TAG, "draw(): CBaseView == NULL" );
+			return;
+		}
+
+		if ( take_screenshot_get_region() ) {
+			take_screenshot_region( canvas );
+		}
 	}
 }
 
@@ -357,6 +384,12 @@ bool CViewMain::onTouchEvent(CKeyEvent* event) {
 	invalidate();
 
 
+	// Take a Screenshot
+	if ( take_screenshot_get_region() ) {
+		return true;
+	}
+
+
 	// Childs views
 	{
 		//m_attach.onTouchEvent( event );
@@ -372,6 +405,11 @@ void CViewMain::onTouchEventDown(CKeyEvent* event, float x, float y) {
 	//__LOGT__( TAG, "onTouchEventDown()" );
 
 	//__LOGT__( TAG, "onTouchEventDown(): x = %f, y = %f", x, y );
+	
+	m_screenshot_touchX = x;
+	m_screenshot_touchY = y;
+	m_screenshot_direction = take_screenshot_get_selected_direction( m_screenshot_rect,
+					m_screenshot_touchX, m_screenshot_touchY );
 }
 
 void CViewMain::onTouchEventUp(CKeyEvent* event, float x, float y) {
@@ -395,6 +433,826 @@ void CViewMain::onTouchEventMove(CKeyEvent* event, float x, float y) {
 		}
 	}
 	*/
+
+	if ( event->is_mouse_lbtn() ) {
+		take_screenshot_update_position( m_screenshot_direction, x, y );
+	}
+}
+
+// ---------------------------------------------------------------
+
+void CViewMain::draw_paint_color(canvas_t* canvas, double r, double g, double b, double a) {
+	//__LOGT__( TAG, "draw_paint_color()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_paint_color(): canvas_t == NULL" );
+		return;
+	}
+
+	if ( a > 0 )
+		cairo_set_source_rgba( canvas, r, g, b, a );
+	else
+		cairo_set_source_rgb( canvas, r, g, b );
+}
+
+void CViewMain::draw_paint_color_fraction(canvas_t* canvas,
+		guint16 r, guint16 g, guint16 b, guint16 a) {
+	//__LOGT__( TAG, "draw_paint_color_fraction()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_paint_color_fraction(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		double f_r = PAINT_COLOR_UINT16_FRACTION_CAIRO( r );
+		double f_g = PAINT_COLOR_UINT16_FRACTION_CAIRO( g );
+		double f_b = PAINT_COLOR_UINT16_FRACTION_CAIRO( b );
+		double f_a = PAINT_COLOR_UINT16_FRACTION_CAIRO( a );
+
+		if ( a > 0 )
+			cairo_set_source_rgba( canvas, f_r, f_g, f_b, f_a );
+		else
+			cairo_set_source_rgb( canvas, f_r, f_g, f_b );
+	}
+}
+
+void CViewMain::draw_paint_color(canvas_t* canvas, bool fraction, ColorARGB_st color) {
+	//__LOGT__( TAG, "draw_paint_color()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_paint_color(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		if ( fraction ) {
+			draw_paint_color_fraction( canvas, color.r, color.g, color.b, color.a );
+		}
+		else {
+			double r, g, b, a;
+
+			a = (double)color.a;
+			r = (double)color.r;
+			g = (double)color.g;
+			b = (double)color.b;
+
+			draw_paint_color( canvas, r, g, b, a );
+		}
+	}
+}
+
+void CViewMain::draw_paint_color(canvas_t* canvas, bool fraction,
+		e_ObjAttachPaintColor_t color, guint16 a) {
+	//__LOGT__( TAG, "draw_paint_color()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_paint_color(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		guint16 r = 0;
+		guint16 g = 0;
+		guint16 b = 0;
+
+		/*
+		switch ( color ) {
+			case e_objAttachPaintColor_BLACK:
+			case e_objAttachPaintColor_BLUE:
+			case e_objAttachPaintColor_CYAN:
+			case e_objAttachPaintColor_DKGRAY:
+			case e_objAttachPaintColor_GRAY:
+			case e_objAttachPaintColor_GREEN:
+			case e_objAttachPaintColor_LTGRAY:
+			case e_objAttachPaintColor_MAGENTA:
+			case e_objAttachPaintColor_RED:
+			//case e_objAttachPaintColor_TRANSPARENT:
+			case e_objAttachPaintColor_WHITE:
+			case e_objAttachPaintColor_YELLOW:
+			default:
+				{
+					color = e_objAttachPaintColor_BLACK;
+				} break;
+		} // switch ()
+		*/
+
+
+		PAINT_COLOR_RGBA_16( color, &r, &g, &b );
+
+		//__LOGT__( TAG, "draw_paint_color(): R = %#x(h), G = %#x(h), B = %#x(h)",
+		//			r, g, b );
+		//__LOGT__( TAG, "draw_paint_color(): 16: R = %d, G = %d, B = %d", r, g, b );
+		//__LOGT__( TAG, "draw_paint_color(): 8: R = %d, G = %d, B = %d",
+		//			PAINT_COLOR_UINT16_8(r),
+		//			PAINT_COLOR_UINT16_8(g),
+		//			PAINT_COLOR_UINT16_8(b) );
+
+
+		if ( fraction ) {
+			draw_paint_color_fraction( canvas, r, g, b, a );
+		}
+		else {
+			draw_paint_color( canvas, (double)r, (double)g, (double)b, (double)a );
+		}
+	}
+}
+
+void CViewMain::draw_circle(canvas_t* canvas, float x, float y, double radius, bool fill) {
+	//__LOGT__( TAG, "draw_circle()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_circle(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		// move the drawing origin to the x and y
+		//cairo_translate( canvas, x, y );
+		
+		// add a new circular path to the cairo drawing context
+		//cairo_arc( canvas, x, y, radius, 0, (2 * M_PI) );
+
+		// the existing path is not affected before calling cairo_arc()
+		//cairo_new_sub_path( canvas );
+
+
+		cairo_new_sub_path( canvas );
+		cairo_arc( canvas, x, y, radius, 0, (2 * M_PI) );
+
+		if ( fill )
+			cairo_fill( canvas );
+
+
+		// draws the outline of the circle
+		//cairo_stroke_preserve( canvas );
+	}
+}
+
+// ---------------------------------------------------------------
+//
+void CViewMain::take_screenshot_get_str_direction(e_ObjAttachDirection_t direction) {
+	//__LOGT__( TAG, "take_screenshot_get_str_direction()" );
+	
+	switch ( direction ) {
+		/*
+		case e_objAttachDirection_UNKNOWN:
+			{} break;
+		case e_objAttachDirection_RESERVED:
+			{} break;
+		*/
+		case e_objAttachDirection_LEFT:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): LEFT" );
+			} break;
+		case e_objAttachDirection_TOP:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): TOP" );
+			} break;
+		case e_objAttachDirection_RIGHT:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): RIGHT" );
+			} break;
+		case e_objAttachDirection_BOTTOM:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): BOTTOM" );
+			} break;
+		case e_objAttachDirection_LEFT_TOP:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): LEFT_TOP" );
+			} break;
+		case e_objAttachDirection_RIGHT_TOP:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): RIGHT_TOP" );
+			} break;
+		case e_objAttachDirection_LEFT_BOTTOM:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): LEFT_BOTTOM" );
+			} break;
+		case e_objAttachDirection_RIGHT_BOTTOM:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): RIGHT_BOTTOM" );
+			} break;
+		case e_objAttachDirection_CENTER:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): CENTER" );
+			} break;
+		case e_objAttachDirection_LEFT_CENTER:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): LEFT_CENTER" );
+			} break;
+		case e_objAttachDirection_TOP_CENTER:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): TOP_CENTER" );
+			} break;
+		case e_objAttachDirection_RIGHT_CENTER:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): RIGHT_CENTER" );
+			} break;
+		case e_objAttachDirection_BOTTOM_CENTER:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): BOTTOM_CENTER" );
+			} break;
+		default:
+			{
+				__LOGT__( TAG, "take_screenshot_get_str_direction(): UNKNOWN" );
+			} break;
+	}
+}
+
+e_ObjAttachDirection_t CViewMain::take_screenshot_get_selected_direction(GdkRectangle rect, float x, float y) {
+	//__LOGT__( TAG, "take_screenshot_get_selected_direction()" );
+	
+	const int radius = DEFAULT_DRAW_CIRCLE_RADIUS;
+	e_ObjAttachDirection_t ret = e_objAttachDirection_UNKNOWN;
+
+
+	// LEFT-TOP
+	if ( ((int)x >= ((rect.x-radius) - radius)) &&
+		((int)x <= ((rect.x-radius) + radius)) &&
+		((int)y >= ((rect.y-radius) - radius)) &&
+		((int)y <= ((rect.y-radius) + radius)) ) {
+		ret = e_objAttachDirection_LEFT_TOP;
+	}
+	// RIGHT-TOP
+	else if ( ((int)x >= (((rect.x+radius) + rect.width) - radius)) &&
+			((int)x <= (((rect.x+radius) + rect.width) + radius)) &&
+			((int)y >= ((rect.y-radius) - radius)) &&
+			((int)y <= ((rect.y-radius) + radius)) ) {
+		ret = e_objAttachDirection_RIGHT_TOP;
+	}
+	// LEFT-BOTTOM
+	else if ( ((int)x >= ((rect.x-radius) - radius)) &&
+			((int)x <= ((rect.x-radius) + radius)) &&
+			((int)y >= (((rect.y+radius) + rect.height) - radius)) &&
+			((int)y <= (((rect.y+radius) + rect.height) + radius)) ) {
+		ret = e_objAttachDirection_LEFT_BOTTOM;
+	}
+	// RIGHT-BOTTOM
+	else if ( ((int)x >= (((rect.x+radius) + rect.width) - radius)) &&
+			((int)x <= (((rect.x+radius) + rect.width) + radius)) &&
+			((int)y >= (((rect.y+radius) + rect.height) - radius)) &&
+			((int)y <= (((rect.y+radius) + rect.height) + radius)) ) {
+		ret = e_objAttachDirection_RIGHT_BOTTOM;
+	}
+	// LEFT-CENTER
+	else if ( ((int)x >= ((rect.x-radius) - radius)) &&
+			((int)x <= ((rect.x-radius) + radius)) &&
+			((int)y >= ((rect.y + (rect.height >> 1)) - radius)) &&
+			((int)y <= ((rect.y + (rect.height >> 1)) + radius)) ) {
+		ret = e_objAttachDirection_LEFT_CENTER;
+	}
+	// RIGHT-CENTER
+	else if ( ((int)x >= (((rect.x+radius) + rect.width) - radius)) &&
+			((int)x <= (((rect.x+radius) + rect.width) + radius)) &&
+			((int)y >= ((rect.y + (rect.height >> 1)) - radius)) &&
+			((int)y <= ((rect.y + (rect.height >> 1)) + radius)) ) {
+		ret = e_objAttachDirection_RIGHT_CENTER;
+	}
+	// TOP-CENTER
+	else if ( ((int)x >= ((rect.x + (rect.width >> 1)) - radius)) &&
+			((int)x <= ((rect.x + (rect.width >> 1)) + radius)) &&
+			((int)y >= ((rect.y-radius) - radius)) &&
+			((int)y <= ((rect.y-radius) + radius)) ) {
+		ret = e_objAttachDirection_TOP_CENTER;
+	}
+	// BOTTOM-CENTER
+	else if ( ((int)x >= ((rect.x + (rect.width >> 1)) - radius)) &&
+			((int)x <= ((rect.x + (rect.width >> 1)) + radius)) &&
+			((int)y >= (((rect.y+radius) + rect.height) - radius)) &&
+			((int)y <= (((rect.y+radius) + rect.height) + radius)) ) {
+		ret = e_objAttachDirection_BOTTOM_CENTER;
+	}
+	// CENTER
+	else if ( ((int)x >= rect.x) && ((int)x <= (rect.x + rect.width)) &&
+			((int)y >= rect.y) && ((int)y <= (rect.y + rect.height)) ) {
+		ret = e_objAttachDirection_CENTER;
+	}
+
+
+	return ret;
+}
+
+void CViewMain::take_screenshot_update_position(e_ObjAttachDirection_t direction, float x, float y) {
+	//__LOGT__( TAG, "take_screenshot_update_position()" );
+	
+	{
+		//const int radius = DEFAULT_DRAW_CIRCLE_RADIUS;
+		float pos_x = 0.f;
+		float pos_y = 0.f;
+
+		// Direction
+		switch ( direction ) {
+			case e_objAttachDirection_LEFT:
+				{
+				} break;
+			case e_objAttachDirection_TOP:
+				{
+				} break;
+			case e_objAttachDirection_RIGHT:
+				{
+				} break;
+			case e_objAttachDirection_BOTTOM:
+				{
+				} break;
+
+			// Diagonal line position
+			case e_objAttachDirection_LEFT_TOP:
+				{
+					// TOP
+					//if ( ((m_screenshot_rect.y + m_screenshot_rect.height) - y) < radius ) {
+					//	return;
+					//}
+
+					if ( m_screenshot_rect.y > y ) {
+						pos_y = (m_screenshot_rect.y - y);
+						m_screenshot_rect.y -= (int)pos_y;
+						m_screenshot_rect.height += (int)pos_y;
+					}
+					else if ( m_screenshot_rect.y < y ) {
+						pos_y = (y - m_screenshot_rect.y);
+						m_screenshot_rect.y += (int)pos_y;
+						m_screenshot_rect.height -= (int)pos_y;
+					}
+
+					// LEFT
+					//if ( ((m_screenshot_rect.x + m_screenshot_rect.width) - x) < radius ) {
+					//	return;
+					//}
+
+					if ( m_screenshot_rect.x > x ) {
+						pos_x = (m_screenshot_rect.x - x);
+						m_screenshot_rect.x -= (int)pos_x;
+						m_screenshot_rect.width += (int)pos_x;
+					}
+					else if ( m_screenshot_rect.x < x ) {
+						pos_x = (x - m_screenshot_rect.x);
+						m_screenshot_rect.x += (int)pos_x;
+						m_screenshot_rect.width -= (int)pos_x;
+					}
+				} break;
+			case e_objAttachDirection_RIGHT_TOP:
+				{
+					// TOP
+					//if ( ((m_screenshot_rect.y + m_screenshot_rect.height) - y) < radius ) {
+					//	return;
+					//}
+
+					if ( m_screenshot_rect.y > y ) {
+						pos_y = (m_screenshot_rect.y - y);
+						m_screenshot_rect.y -= (int)pos_y;
+						m_screenshot_rect.height += (int)pos_y;
+					}
+					else if ( m_screenshot_rect.y < y ) {
+						pos_y = (y - m_screenshot_rect.y);
+						m_screenshot_rect.y += (int)pos_y;
+						m_screenshot_rect.height -= (int)pos_y;
+					}
+
+					// RIGHT
+					//if ( (x - m_screenshot_rect.x) < radius ) {
+					//	return;
+					//}
+
+					if ( (m_screenshot_rect.x + m_screenshot_rect.width) > x ) {
+						pos_x = (m_screenshot_rect.x + m_screenshot_rect.width) - x;
+						m_screenshot_rect.width -= (int)pos_x;
+					}
+					else if ( (m_screenshot_rect.x + m_screenshot_rect.width) < x ) {
+						pos_x = x - (m_screenshot_rect.x + m_screenshot_rect.width);
+						m_screenshot_rect.width += (int)pos_x;
+					}
+				} break;
+			case e_objAttachDirection_LEFT_BOTTOM:
+				{
+					// BOTTOM
+					//if ( (y - m_screenshot_rect.y) < radius ) {
+					//	return;
+					//}
+
+					if ( (m_screenshot_rect.y + m_screenshot_rect.height) > y ) {
+						pos_y = (m_screenshot_rect.y + m_screenshot_rect.height) - y;
+						m_screenshot_rect.height -= (int)pos_y;
+					}
+					else if ( m_screenshot_rect.height < y ) {
+						pos_y = y - (m_screenshot_rect.y + m_screenshot_rect.height);
+						m_screenshot_rect.height += (int)pos_y;
+					}
+
+					// LEFT
+					//if ( ((m_screenshot_rect.x + m_screenshot_rect.width) - x) < radius ) {
+					//	return;
+					//}
+
+					if ( m_screenshot_rect.x > x ) {
+						pos_x = (m_screenshot_rect.x - x);
+						m_screenshot_rect.x -= (int)pos_x;
+						m_screenshot_rect.width += (int)pos_x;
+					}
+					else if ( m_screenshot_rect.x < x ) {
+						pos_x = (x - m_screenshot_rect.x);
+						m_screenshot_rect.x += (int)pos_x;
+						m_screenshot_rect.width -= (int)pos_x;
+					}
+				} break;
+			case e_objAttachDirection_RIGHT_BOTTOM:
+				{
+					// BOTTOM
+					//if ( (y - m_screenshot_rect.y) < radius ) {
+					//	return;
+					//}
+
+					if ( (m_screenshot_rect.y + m_screenshot_rect.height) > y ) {
+						pos_y = (m_screenshot_rect.y + m_screenshot_rect.height) - y;
+						m_screenshot_rect.height -= (int)pos_y;
+					}
+					else if ( m_screenshot_rect.height < y ) {
+						pos_y = y - (m_screenshot_rect.y + m_screenshot_rect.height);
+						m_screenshot_rect.height += (int)pos_y;
+					}
+
+					// RIGHT
+					//if ( (x - m_screenshot_rect.x) < radius ) {
+					//	return;
+					//}
+
+					if ( (m_screenshot_rect.x + m_screenshot_rect.width) > x ) {
+						pos_x = (m_screenshot_rect.x + m_screenshot_rect.width) - x;
+						m_screenshot_rect.width -= (int)pos_x;
+					}
+					else if ( (m_screenshot_rect.x + m_screenshot_rect.width) < x ) {
+						pos_x = x - (m_screenshot_rect.x + m_screenshot_rect.width);
+						m_screenshot_rect.width += (int)pos_x;
+					}
+
+				} break;
+			
+			// CENTER
+			case e_objAttachDirection_CENTER:
+				{
+					if ( m_screenshot_touchX > x ) {
+						pos_x = (m_screenshot_touchX - x);
+						m_screenshot_rect.x -= (int)pos_x;
+						m_screenshot_touchX -= (int)pos_x;
+					}
+					else if ( m_screenshot_touchX < x ) {
+						pos_x = (x - m_screenshot_touchX);
+						m_screenshot_rect.x += (int)pos_x;
+						m_screenshot_touchX += (int)pos_x;
+					}
+					if ( m_screenshot_touchY > y ) {
+						pos_y = (m_screenshot_touchY - y);
+						m_screenshot_rect.y -= (int)pos_y;
+						m_screenshot_touchY -= (int)pos_y;
+					}
+					else if ( m_screenshot_touchY < y ) {
+						pos_y = (y - m_screenshot_touchY);
+						m_screenshot_rect.y += (int)pos_y;
+						m_screenshot_touchY += (int)pos_y;
+					}
+				} break;
+			case e_objAttachDirection_LEFT_CENTER:
+				{
+					//if ( ((m_screenshot_rect.x + m_screenshot_rect.width) - x) < radius ) {
+					//	return;
+					//}
+
+					if ( m_screenshot_rect.x > x ) {
+						pos_x = (m_screenshot_rect.x - x);
+						m_screenshot_rect.x -= (int)pos_x;
+						m_screenshot_rect.width += (int)pos_x;
+					}
+					else if ( m_screenshot_rect.x < x ) {
+						pos_x = (x - m_screenshot_rect.x);
+						m_screenshot_rect.x += (int)pos_x;
+						m_screenshot_rect.width -= (int)pos_x;
+					}
+				} break;
+			case e_objAttachDirection_TOP_CENTER:
+				{
+					//if ( ((m_screenshot_rect.y + m_screenshot_rect.height) - y) < radius ) {
+					//	return;
+					//}
+
+					if ( m_screenshot_rect.y > y ) {
+						pos_y = (m_screenshot_rect.y - y);
+						m_screenshot_rect.y -= (int)pos_y;
+						m_screenshot_rect.height += (int)pos_y;
+					}
+					else if ( m_screenshot_rect.y < y ) {
+						pos_y = (y - m_screenshot_rect.y);
+						m_screenshot_rect.y += (int)pos_y;
+						m_screenshot_rect.height -= (int)pos_y;
+					}
+				} break;
+			case e_objAttachDirection_RIGHT_CENTER:
+				{
+					//if ( ((x - m_screenshot_rect.x) < radius ) {
+					//	return;
+					//}
+
+					if ( (m_screenshot_rect.x + m_screenshot_rect.width) > x ) {
+						pos_x = (m_screenshot_rect.x + m_screenshot_rect.width) - x;
+						m_screenshot_rect.width -= (int)pos_x;
+					}
+					else if ( (m_screenshot_rect.x + m_screenshot_rect.width) < x ) {
+						pos_x = x - (m_screenshot_rect.x + m_screenshot_rect.width);
+						m_screenshot_rect.width += (int)pos_x;
+					}
+				} break;
+			case e_objAttachDirection_BOTTOM_CENTER:
+				{
+					//if ( (y - m_screenshot_rect.y) < radius ) {
+					//	return;
+					//}
+
+					if ( (m_screenshot_rect.y + m_screenshot_rect.height) > y ) {
+						pos_y = (m_screenshot_rect.y + m_screenshot_rect.height) - y;
+						m_screenshot_rect.height -= (int)pos_y;
+					}
+					else if ( m_screenshot_rect.height < y ) {
+						pos_y = y - (m_screenshot_rect.y + m_screenshot_rect.height);
+						m_screenshot_rect.height += (int)pos_y;
+					}
+				} break;
+			default:
+				{
+				} break;
+		}
+	}
+}
+
+bool CViewMain::take_screenshot_get_region(void) {
+	//__LOGT__( TAG, "take_screenshot_get_region()" );
+	
+	return m_screenshot_region;
+}
+
+void CViewMain::take_screenshot_set_region(bool set_region, bool init) {
+	//__LOGT__( TAG, "take_screenshot_set_region()" );
+	
+	m_screenshot_region = set_region;
+
+	if ( init ) {
+		m_screenshot_rect.x = 50;
+		m_screenshot_rect.y = 50;
+		m_screenshot_rect.width = 100;
+		m_screenshot_rect.height = 100;
+	}
+}
+
+void CViewMain::take_screenshot_region(canvas_t* canvas) {
+	//__LOGT__( TAG, "take_screenshot_region()" );
+	
+	//cairo_save( canvas );
+	{
+		const int radius = DEFAULT_DRAW_CIRCLE_RADIUS;
+		int x = 0;
+		int y = 0;
+
+
+		// Clear previous path
+		//cairo_new_sub_path( canvas );
+
+		// Paint
+		draw_paint_color( canvas, true, e_objAttachPaintColor_RED );
+
+		{
+			// dotted(dashed) rectangle
+			const double dashed[] = { 3.0f, 3.0f };
+			const int dashed_len = sizeof(dashed) / sizeof(dashed[0]);
+
+			cairo_set_line_width( canvas, 1.0f );
+			cairo_set_dash( canvas, dashed, dashed_len, 0 );
+			cairo_rectangle( canvas, m_screenshot_rect.x, m_screenshot_rect.y,
+								m_screenshot_rect.width, m_screenshot_rect.height );
+			cairo_stroke( canvas );
+		}
+
+		//
+		// Draw a circle for respective direction as following:
+		//  - 4 ways(Left, Right, Top, Bottom)
+		//  - Diagonal line position
+		//
+		//		x------x------x
+		//		| .         . |
+		//		|   .     .   |
+		//		x      x      x
+		//		|    .   .    |
+		//		| .         . |
+		//		x------x------x
+		//
+		//
+		//  - outside figures for capture region
+		//
+		//		x       x       x
+		//		 +-------------+
+		//		 | .         . |
+		//		 |   .     .   |
+		//		x|      x      |x
+		//		 |    .   .    |
+		//		 | .         . |
+		//		 +-------------+
+		//		x       x       x
+		//
+
+		x = m_screenshot_rect.x - radius;
+		y = m_screenshot_rect.y - radius;
+		// move the drawing origin to the x and y
+		//cairo_translate( canvas, x, y );
+		// add a new circular path to the cairo drawing context
+		//cairo_arc( canvas, x, y, radius, 0, (2 * M_PI) );
+		// the existing path is not affected before calling cairo_arc()
+		//cairo_new_sub_path( canvas );
+
+		// Left-Top
+		draw_circle( canvas, x, y, radius );
+		// Right-Top
+		x = ( m_screenshot_rect.x + m_screenshot_rect.width ) + radius;
+		draw_circle( canvas, x, y, radius );
+		// Center-Top
+		x = ( m_screenshot_rect.x + (m_screenshot_rect.width >> 1) );
+		draw_circle( canvas, x, y, radius );
+
+		x = m_screenshot_rect.x - radius;
+		y = ( m_screenshot_rect.y + m_screenshot_rect.height ) + radius;
+
+		// Left-Bottom
+		draw_circle( canvas, x, y, radius );
+		// Right-Bottom
+		x = ( m_screenshot_rect.x + m_screenshot_rect.width ) + radius;
+		draw_circle( canvas, x, y, radius );
+		// Center-Bottom
+		x = ( m_screenshot_rect.x + (m_screenshot_rect.width >> 1) );
+		draw_circle( canvas, x, y, radius );
+
+		x = m_screenshot_rect.x - radius;
+		y = ( m_screenshot_rect.y + (m_screenshot_rect.height >> 1) );
+
+		// Left,Right-Center
+		draw_circle( canvas, x, y, radius );
+		x = ( m_screenshot_rect.x + m_screenshot_rect.width ) + radius;
+		draw_circle( canvas, x, y, radius );
+
+
+
+		// draws the outline of the circle
+		cairo_stroke_preserve( canvas );
+	}
+	//cairo_restore( canvas );
+}
+
+const char* CViewMain::take_screenshot_get_pathname(void) {
+	//__LOGT__( TAG, "take_screenshot_get_pathname()" );
+	
+	return m_screenshot_pathname;
+}
+
+bool CViewMain::take_screenshot_save(void) {
+	//__LOGT__( TAG, "take_screenshot()" );
+
+	// default image format: PNG
+	
+	const int padding = 1;
+	int x, y, width, height;
+	const char* filename = "screenshot";
+	const char* ext = "png";
+	const e_takeScreenshot_t format = e_takeScreenshot_PNG;
+
+	char pathname[TAKE_SCREENSHOT__PATHNAME_MAX_SIZE] = { 0, };
+	char uuid[g_INT_MAX_UUID_SIZE] = { 0, };
+#ifdef __LINUX__
+	{
+		struct stat st;
+		struct passwd* pw;
+
+
+		//! TODO: thread-safe
+		pw = getpwuid( getuid() );
+		if ( pw ) {
+			snprintf( pathname, sizeof(pathname), "/home/%s/Pictures/",
+						pw->pw_name );
+
+			// check a directory exist
+			if ( stat(pathname, &st) != 0 ) {
+				memset( (void*)&pathname, 0x00, sizeof(pathname) );
+				snprintf( pathname, sizeof(pathname), "/home/%s/", pw->pw_name );
+
+				if ( stat(pathname, &st) != 0 ) {
+					return false;
+				}
+			}
+
+			memset( (void*)&pathname, 0x00, sizeof(pathname) );
+			if ( get_uuid(uuid, sizeof(uuid)) ) {
+				// "/home/" + pw->pw_name + "/Pictures/" + filename + "-" + uuid + ext
+				snprintf( pathname, sizeof(pathname), "/home/%s/Pictures/%s-%s.%s",
+							pw->pw_name, filename, uuid, ext );
+			}
+			else {
+				// "/home/" + pw->pw_name + filename
+				snprintf( pathname, sizeof(pathname), "/home/%s/%s.%s",
+							pw->pw_name, filename, ext );
+			}
+
+			//__LOGT__( TAG, "take_screenshot(): pathname = %s", pathname );
+		}
+	}
+#else
+	{
+		if ( get_uuid(uuid, sizeof(uuid)) ) {
+			// filename + "-" + uuid + ext
+			snprintf( pathname, sizeof(pathname), "%s-%s.%s", filename, uuid, ext );
+		}
+		else {
+			// filename + ext
+			snprintf( pathname, sizeof(pathname), "%s.%s", filename, ext );
+		}
+
+		//__LOGT__( TAG, "take_screenshot(): pathname = %s", pathname );
+	}
+#endif
+
+	x = m_screenshot_rect.x + padding;
+	y = m_screenshot_rect.y + padding;
+	width = m_screenshot_rect.width - (padding << 1);
+	height = m_screenshot_rect.height - (padding << 1);
+
+	memset( (void*)&m_screenshot_pathname, 0x00, sizeof(m_screenshot_pathname) );
+	snprintf( m_screenshot_pathname, sizeof(m_screenshot_pathname), "%s",  pathname );
+
+
+	return take_screenshot_save( x, y, width, height, pathname, format );
+}
+
+bool CViewMain::take_screenshot_save(int x, int y, int width, int height,
+	const char* filename, const e_takeScreenshot_t format) {
+	//__LOGT__( TAG, "take_screenshot_save()" );
+	
+	GdkPixbuf* pixbuf = NULL;
+	GdkWindow* gdk_window = NULL;
+	drawing_area_t* view = NULL;
+	char* img_format = NULL;
+	GError* error = NULL;
+	bool saved = false;
+
+
+	if ( format == e_takeScreenshot_PNG )
+		img_format = (char*)"png";
+	else if ( format == e_takeScreenshot_JPEG )
+		img_format = (char*)"jpeg";
+
+	if ( !img_format ) {
+		__LOGT__( TAG, "take_screenshot_save(): image format == NULL" );
+		return false;
+	}
+
+
+	view = get_top_view();
+	if ( !view ) {
+		__LOGT__( TAG, "take_screenshot_save(): Top View == NULL" );
+		return false;
+	}
+
+	gdk_window = view->window;
+	if ( !gdk_window )  {
+		__LOGT__( TAG, "take_screenshot_save(): GdkWindow == NULL" );
+		return false;
+	}
+
+	{
+		//gdk_drawable_get_size(GDK_DRAWABLE(view), &width, &height );
+		pixbuf = gdk_pixbuf_get_from_drawable( NULL, GDK_DRAWABLE(gdk_window),
+						NULL, x, y, 0, 0, width, height );
+
+		if ( !pixbuf ) {
+			__LOGT__( TAG, "take_screenshot_save(): GdkWindow == NULL" );
+			return false;
+		}
+
+		saved = gdk_pixbuf_save( pixbuf, filename, (const char*)img_format, &error,
+									"quality", "100", NULL );
+
+		g_object_unref( pixbuf );
+
+		if ( !saved ) {
+			__LOGT__( TAG, "take_screenshot_save(): Saved [FALSE]" );
+
+			if ( error ) {
+				__LOGT__( TAG, "take_screenshot_save(): %s", error->message );
+				g_free( error );
+				error = NULL;
+			}
+
+			return false;
+		}
+	}
+
+	//__LOGT__( TAG, "take_screenshot_save(): Saved [TRUE]" );
+	//__LOGT__( TAG, "take_screenshot_save(): Saved: %s", filename );
+
+
+	return true;
 }
 
 // ---------------------------------------------------------------
@@ -985,6 +1843,10 @@ bool CViewMain::attach_invalidate(CBaseView* view) {
 			CViewAttach* attach = (*iter);
 
 			if ( attach ) {
+				if ( take_screenshot_get_region() ) {
+					attach->set_select( false );
+				}
+
 				attach->invalidate( view );
 			}
 		} // for()

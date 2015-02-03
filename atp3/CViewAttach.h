@@ -79,7 +79,7 @@ Note:
 
 //! Definition
 // ---------------------------------------------------------------
-#define DEFAULT_DRAW_CIRCLE_RADIUS				8
+//#define DEFAULT_DRAW_CIRCLE_RADIUS				8
 
 // Text
 #define DEFAULT_TEXT_FONT_FAMILY				"Sans"
@@ -113,6 +113,8 @@ typedef enum _e_objAttachFontTypeface_t {
 	e_objAttachFontTypeface_OBLIQUE,
 } e_ObjAttachFontTypeface_t;
 
+/*
+// Attached objact direction
 typedef enum _e_objAttachDirection_t {
 	e_objAttachDirection_UNKNOWN = -1,
 	e_objAttachDirection_RESERVED = 0,
@@ -131,6 +133,7 @@ typedef enum _e_objAttachDirection_t {
 	e_objAttachDirection_RIGHT_CENTER,
 	e_objAttachDirection_BOTTOM_CENTER
 } e_ObjAttachDirection_t;
+*/
 
 #ifdef __cplusplus
 }
@@ -270,6 +273,7 @@ public:
 	void draw_paint_color(canvas_t* canvas, bool fraction,
 			e_ObjAttachPaintColor_t color, guint16 a = 0);
 
+	// Figure
 	void draw_circle(canvas_t* canvas, float x, float y, double radius, bool fill = false);
 
 	// Image

@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	incl_g_func_signal_handler.cxx
 
-Last modified: Jan 30, 2015
+Last modified: Feb 3, 2015
 License:
 
 *
@@ -338,6 +338,90 @@ namespace g_FuncSignalHandler {
 		}
 	}
 
+	// Toolbar Button: Take a screenshot; region
+	void on_toolbar_button_take_screenshot_region_clicked(GtkWidget* widget, gpointer user_data) {
+		//__LOGT__( TAG__g_FuncSignalHandler, "on_toolbar_button_take_screenshot_region_clicked()" );
+
+		if ( !widget || !user_data ) return;
+
+		if ( g_pCAtp3 ) {
+			CViewMain* view = g_pCAtp3->get_view_main();
+
+			if ( view ) {
+				if ( view->take_screenshot_get_region() ) {
+					view->take_screenshot_set_region( false );
+
+					// disabled 'save' button
+					// ...
+				}
+				else {
+					view->take_screenshot_set_region( true );
+
+					// enabled 'save' button
+					// ...
+				}
+
+				view->invalidate();
+			}
+		}
+	}
+
+	// Toolbar Button: Take a screenshot: save
+	void on_toolbar_button_take_screenshot_save_clicked(GtkWidget* widget, gpointer user_data) {
+		//__LOGT__( TAG__g_FuncSignalHandler, "on_toolbar_button_take_screenshot_save_clicked()" );
+
+		if ( !widget || !user_data ) return;
+
+		if ( g_pCAtp3 ) {
+			CViewMain* view = g_pCAtp3->get_view_main();
+			bool ret = false;
+
+			if ( view ) {
+				if ( view->take_screenshot_get_region() ) {
+					view->take_screenshot_set_region( false, false );
+					view->invalidate();
+
+					ret = view->take_screenshot_save();
+					if ( ret ) {
+						const char* pathname = view->take_screenshot_get_pathname();
+						const char msg_success[] = "Saved";
+						char* msg_pathname = NULL;
+
+						if ( pathname ) {
+							const int len = 32 + strlen( pathname ) + 1;
+
+							msg_pathname = new char[len];
+							if ( msg_pathname ) {
+								snprintf( msg_pathname, len, "Saved: %s", pathname );
+								g_toastMsgDlg.show( (GtkWindow*)((Widgets_st*)user_data)->pWindow, NULL,
+										msg_pathname, e_toastMsgShowDelay_SHORT, e_toastMsgShowDelay_CENTER );
+							}
+							else {
+								g_toastMsgDlg.show( (GtkWindow*)((Widgets_st*)user_data)->pWindow, NULL,
+										msg_success, e_toastMsgShowDelay_SHORT, e_toastMsgShowDelay_CENTER );
+							}
+						}
+						else {
+							g_toastMsgDlg.show( (GtkWindow*)((Widgets_st*)user_data)->pWindow, NULL,
+									msg_success, e_toastMsgShowDelay_SHORT, e_toastMsgShowDelay_CENTER );
+						}
+					}
+					else {
+							const char msg_fail[] = "Saved [FALSE]";
+							g_toastMsgDlg.show( (GtkWindow*)((Widgets_st*)user_data)->pWindow, NULL,
+									msg_fail, e_toastMsgShowDelay_SHORT, e_toastMsgShowDelay_CENTER );
+					}
+				}
+			}
+		}
+	}
+
+
+	// ---------------------------------------------------------------
+	
+
+	// Popup Menu
+	// ---------------------------------------------------------------
 	// Popup Menu: Create a Popup Menu
 	bool on_event_create_popup_menu(GtkWidget* widget, gpointer user_data, e_popupMenu_t type) {
 		//__LOGT__( TAG__g_FuncSignalHandler, "on_event_create_popup_menu()" );

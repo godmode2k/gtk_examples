@@ -91,4 +91,8 @@ Screenshots
 
 ![alt tag](https://github.com/godmode2k/gtk_examples/raw/master/screenshots/screenshot_08.png)
 
+> Capture region
+
+![alt tag](https://github.com/godmode2k/gtk_examples/raw/master/screenshots/screenshot_09.png)
+
 

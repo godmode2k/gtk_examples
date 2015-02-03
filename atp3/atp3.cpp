@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	atp3.cpp
 
-Last modified: Jan 30, 2015
+Last modified: Feb 2, 2015
 License:
 
 *
@@ -245,6 +245,18 @@ bool CAtp3::init_ui_with_callback(void) {
 					GTK_WIDGET( gtk_builder_get_object(m_pGladeXml, "Toolbutton_ClearAll") );
 	g_signal_connect( G_OBJECT(m_pWidgets->pToolbarButton), "clicked",
 					G_CALLBACK(g_FuncSignalHandler::on_toolbar_button_clear_all), m_pWidgets );
+
+	// Toolbar Button: Take a screenshot; region
+	m_pWidgets->pToolbarButton =
+					GTK_WIDGET( gtk_builder_get_object(m_pGladeXml, "Toolbutton_TakeScreenshot_Region") );
+	g_signal_connect( G_OBJECT(m_pWidgets->pToolbarButton), "clicked",
+					G_CALLBACK(g_FuncSignalHandler::on_toolbar_button_take_screenshot_region_clicked), m_pWidgets );
+
+	// Toolbar Button: Take a screenshot: save
+	m_pWidgets->pToolbarButton =
+					GTK_WIDGET( gtk_builder_get_object(m_pGladeXml, "Toolbutton_TakeScreenshot_Save") );
+	g_signal_connect( G_OBJECT(m_pWidgets->pToolbarButton), "clicked",
+					G_CALLBACK(g_FuncSignalHandler::on_toolbar_button_take_screenshot_save_clicked), m_pWidgets );
 
 
 

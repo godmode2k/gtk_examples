@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	incl_g_func_signal_handler.hxx
 
-Last modified: Jan 30, 2015
+Last modified: Feb 2, 2015
 License:
 
 *
@@ -76,6 +76,8 @@ namespace g_FuncSignalHandler {
 	void on_toolbar_button_add_text_with_bg_img_clicked(GtkWidget* widget, gpointer user_data);
 	void on_toolbar_button_delete_attached_obj_clicked(GtkWidget* widget, gpointer user_data);
 	void on_toolbar_button_clear_all(GtkWidget* widget, gpointer user_data);
+	void on_toolbar_button_take_screenshot_region_clicked(GtkWidget* widget, gpointer user_data);
+	void on_toolbar_button_take_screenshot_save_clicked(GtkWidget* widget, gpointer user_data);
 
 
 	// Popup Menu
