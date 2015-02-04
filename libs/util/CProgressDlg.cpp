@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Nov 28, 2014
 Filename:	CProgressDlg.cpp
 
-Last modified: Jan 20, 2015
+Last modified: Feb 3, 2015
 License:
 
 *
@@ -423,22 +423,27 @@ gint CProgressDlg::show(GtkWindow* pWindow, gpointer user_data, const char* msg,
 				{
 					// Spinner, Label(Progress)
 
-					if ( show_type != e_showProgress_PROGRESSBAR ) {
+					if ( (show_type == e_showProgress_ALL) || (show_type == e_showProgress_NO_PROGRESSBAR) ) {
 						gtk_box_pack_start( GTK_BOX(m_pHBox_spinner_progress), GTK_WIDGET(m_pSpinner), false, false, 1 );
 						gtk_box_pack_start( GTK_BOX(m_pHBox_spinner_progress), m_pLabel_progress, false, false, 1 );
+					}
+					else if ( show_type == e_showProgress_NO_PROGRESSBAR_NO_PROGRESS_LABEL ) {
+						gtk_box_pack_start( GTK_BOX(m_pHBox_spinner_progress), GTK_WIDGET(m_pSpinner), false, false, 1 );
 					}
 				}
 
 				{
 					// Spinner, Label(Progress), ProgressBar, Label(Message)
 
-					if ( show_type != e_showProgress_PROGRESSBAR ) {
+					if ( (show_type == e_showProgress_ALL) || (show_type == e_showProgress_NO_PROGRESSBAR) ||
+							(show_type == e_showProgress_NO_PROGRESSBAR_NO_PROGRESS_LABEL) ) {
 						gtk_box_pack_start( GTK_BOX(m_pVBox), m_pHBox_spinner_progress, false, false, 1 );
 					}
-					if ( show_type != e_showProgress_NO_PROGRESSBAR ) {
+					if ( (show_type == e_showProgress_ALL) || (show_type == e_showProgress_PROGRESSBAR) ) {
 						gtk_box_pack_start( GTK_BOX(m_pVBox), m_pProgressBar, false, false, 1 );
 					}
 					gtk_box_pack_start( GTK_BOX(m_pVBox), m_pLabel, false, false, 1 );
+
 
 					gtk_container_add( GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(m_pSpinner_dlg))),
 										m_pVBox );

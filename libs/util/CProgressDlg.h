@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Nov 28, 2014
 Filename:	CProgressDlg.h
 
-Last modified: Jan 20, 2015
+Last modified: Feb 3, 2015
 License:
 
 *
@@ -96,9 +96,14 @@ extern "C" {
 #endif
 
 typedef enum _e_ShowProgress_t {
+	// Spinner, Progress info, Progressbar
 	e_showProgress_ALL = 0,
+	// Progressbar
 	e_showProgress_PROGRESSBAR,
-	e_showProgress_NO_PROGRESSBAR
+	// Spinner, Progress info
+	e_showProgress_NO_PROGRESSBAR,
+	// Spinner
+	e_showProgress_NO_PROGRESSBAR_NO_PROGRESS_LABEL
 } e_ShowProgress_t;
 
 #ifdef __cplusplus

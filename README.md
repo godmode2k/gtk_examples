@@ -4,15 +4,18 @@ GTK+ Examples
 
 Summary
 ----------
-> The sources show you how to use a GtkDrawingArea and <br>
-> make a custom View.
+> The sources show you how to use a GtkDrawingArea,<br>
+> make a custom View and how to use Cairo/Pango font glyph.
 
 
 Environment
 ----------
 > build all and tested on GNU/Linux X-Window
 
+    GNU/Linux: Ubuntu 11.10 (Unity 3D, 2D)
     GTK+ version: 2.x, 3.x
+    Cairo version: 1.xx
+    Pango version: 1.0
 
 
 Build
