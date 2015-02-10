@@ -48,7 +48,7 @@ Build
 	  - CNetSockLib.cpp        // Network Class
 	  -
 	  - CDialog.cpp            // Gtk+ Widget Dialog Class (Custom)
-	  - CThreadTask.cpp        // PThread Class, 
+	  - CThreadTask.cpp        // PThread Class, like AsyncTask method in Android
 	  - CProgressDlg.cpp       // Progress Dialog Class
 	  - CToastMsgDlg.cpp       // Message Dialog Class, like Toast method in Android
 	  -
