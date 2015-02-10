@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CViewMain.h
 
-Last modified: Feb 3, 2015
+Last modified: Feb 7, 2015
 License:
 
 *
@@ -305,6 +305,7 @@ public:
 	bool attach_edit_text(const char* text, const char* bg_img_filename = NULL,
 			const char* tag = NULL);
 	bool attach_add_image(const char* img_filename, const char* tag = NULL);
+	bool attach_rotate(void);
 	bool attach_delete(void);
 	bool attach_delete_all(void);
 	CViewAttach* attach_selected(void);

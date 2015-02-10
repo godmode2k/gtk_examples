@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CViewMain.cpp
 
-Last modified: Feb 3, 2015
+Last modified: Feb 8, 2015
 License:
 
 *
@@ -1499,6 +1499,11 @@ bool CViewMain::attach_add_text(const char* text, const char* bg_img_filename,
 			if ( !text )
 				__LOGT__( TAG, "attach_add_text(): Text == NULL" );
 
+			if ( attach ) {
+				delete attach;
+				attach = NULL;
+			}
+
 			return false;
 		}
 
@@ -1565,12 +1570,26 @@ bool CViewMain::attach_add_text(const char* text, const char* bg_img_filename,
 		// Background Image
 		if ( !m_tmp_obj_bg_img_info.selected_bg_img ) {
 			if ( bg_img_filename ) {
-				attach->load_image( bg_img_filename );
+				if ( !attach->load_image(bg_img_filename) ) {
+					if ( attach ) {
+						delete attach;
+						attach = NULL;
+					}
+
+					return false;
+				}
 			}
 		}
 		else {
 			if ( m_tmp_obj_bg_img_info.bg_img_filename ) {
-				attach->load_image( m_tmp_obj_bg_img_info.bg_img_filename );
+				if ( !attach->load_image(m_tmp_obj_bg_img_info.bg_img_filename) ) {
+					if ( attach ) {
+						delete attach;
+						attach = NULL;
+					}
+
+					return false;
+				}
 			}
 		}
 
@@ -1698,6 +1717,11 @@ bool CViewMain::attach_add_image(const char* img_filename, const char* tag) {
 			if ( !img_filename )
 				__LOGT__( TAG, "attach_add_image(): Image filename == NULL" );
 
+			if ( attach ) {
+				delete attach;
+				attach = NULL;
+			}
+
 			return false;
 		}
 
@@ -1707,13 +1731,51 @@ bool CViewMain::attach_add_image(const char* img_filename, const char* tag) {
 		attach->set_obj_type( type );
 		attach->set_tag2( tag );
 		attach->set_obj_rect( 50.f, 50.f, 100.f, 100.f );
-		attach->load_image( img_filename );
+		if ( !attach->load_image(img_filename) ) {
+			if ( attach ) {
+				delete attach;
+				attach = NULL;
+			}
+
+			return false;
+		}
 
 		m_pvec_attach->push_back( attach );
 	}
 
 
 	return true;
+}
+
+bool CViewMain::attach_rotate(void) {
+	//__LOGT__( TAG, "attach_rotate()" );
+	
+	bool ret = false;
+
+	if ( !m_pvec_attach ) {
+		__LOGT__( TAG, "attach_rotate(): Attachment Container == NULL" );
+		return false;
+	}
+
+	if ( m_pvec_attach->size() > 0 ) {
+		std::vector<CViewAttach*>::iterator iter;
+
+		for ( iter = m_pvec_attach->begin(); iter != m_pvec_attach->end(); ++iter ) {
+			CViewAttach* attach = (*iter);
+
+			if ( attach ) {
+				if ( attach->get_selected() ) {
+					attach->set_obj_rotate( true );
+					ret = true;
+
+					break;
+				}
+			}
+		} // for()
+	}
+
+
+	return ret;
 }
 
 bool CViewMain::attach_delete(void) {
@@ -1845,6 +1907,7 @@ bool CViewMain::attach_invalidate(CBaseView* view) {
 			if ( attach ) {
 				if ( take_screenshot_get_region() ) {
 					attach->set_select( false );
+					attach->set_obj_rotate( false );
 				}
 
 				attach->invalidate( view );
@@ -1880,6 +1943,7 @@ bool CViewMain::attach_touch_event(CKeyEvent* event) {
 			if ( attach ) {
 				if ( found ) {
 					attach->set_select( false );
+					attach->set_obj_rotate( false );
 					continue;
 				}
 
