@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	incl_g_func_signal_handler.cxx
 
-Last modified: Feb 3, 2015
+Last modified: Feb 7, 2015
 License:
 
 *
@@ -482,6 +482,7 @@ namespace g_FuncSignalHandler {
 			GtkWidget* menu_item_add_image = NULL;
 			GtkWidget* menu_item_add_text = NULL;
 			GtkWidget* menu_item_edit_text = NULL;
+			GtkWidget* menu_item_rotate_obj = NULL;
 			GtkWidget* menu_item_del_obj = NULL;
 			GtkWidget* menu_item_separator = NULL;
 
@@ -490,11 +491,12 @@ namespace g_FuncSignalHandler {
 			menu_item_add_image = gtk_menu_item_new_with_label( "+Image" );
 			menu_item_add_text = gtk_menu_item_new_with_label( "+Text" );
 			menu_item_edit_text = gtk_menu_item_new_with_label( "Edit the Text" );
+			menu_item_rotate_obj = gtk_menu_item_new_with_label( "Rotate" );
 			menu_item_del_obj = gtk_menu_item_new_with_label( "-Image/Text" );
 
 
 			if ( !menu_item_add_image || !menu_item_add_text || !menu_item_edit_text ||
-					!menu_item_del_obj || !menu_item_separator ) {
+					!menu_item_rotate_obj || !menu_item_del_obj || !menu_item_separator ) {
 				__LOGT__( TAG__g_FuncSignalHandler, "on_event_popup_menu_attachment(): items == NULL" );
 				return false;
 			}
@@ -504,7 +506,8 @@ namespace g_FuncSignalHandler {
 			gtk_widget_set_name( menu_item_add_image, "0" );
 			gtk_widget_set_name( menu_item_add_text, "1" );
 			gtk_widget_set_name( menu_item_edit_text, "2" );
-			gtk_widget_set_name( menu_item_del_obj, "3" );
+			gtk_widget_set_name( menu_item_rotate_obj, "3" );
+			gtk_widget_set_name( menu_item_del_obj, "4" );
 
 
 			g_signal_connect( G_OBJECT(menu_item_add_image), "activate",
@@ -512,6 +515,8 @@ namespace g_FuncSignalHandler {
 			g_signal_connect( G_OBJECT(menu_item_add_text), "activate",
 							G_CALLBACK(g_FuncSignalHandler::on_event_popup_menu_clicked), user_data );
 			g_signal_connect( G_OBJECT(menu_item_edit_text), "activate",
+							G_CALLBACK(g_FuncSignalHandler::on_event_popup_menu_clicked), user_data );
+			g_signal_connect( G_OBJECT(menu_item_rotate_obj), "activate",
 							G_CALLBACK(g_FuncSignalHandler::on_event_popup_menu_clicked), user_data );
 			g_signal_connect( G_OBJECT(menu_item_del_obj), "activate",
 							G_CALLBACK(g_FuncSignalHandler::on_event_popup_menu_clicked), user_data );
@@ -521,6 +526,7 @@ namespace g_FuncSignalHandler {
 			gtk_menu_shell_append( GTK_MENU_SHELL(widget), menu_item_add_text );
 			gtk_menu_shell_append( GTK_MENU_SHELL(widget), menu_item_separator );
 			gtk_menu_shell_append( GTK_MENU_SHELL(widget), menu_item_edit_text );
+			gtk_menu_shell_append( GTK_MENU_SHELL(widget), menu_item_rotate_obj );
 			gtk_menu_shell_append( GTK_MENU_SHELL(widget), menu_item_del_obj );
 
 
@@ -532,6 +538,7 @@ namespace g_FuncSignalHandler {
 
 				if ( !selected ) {
 					gtk_widget_set_sensitive( menu_item_edit_text, selected );
+					gtk_widget_set_sensitive( menu_item_rotate_obj, selected );
 					gtk_widget_set_sensitive( menu_item_del_obj, selected );
 				}
 			}
@@ -702,6 +709,12 @@ namespace g_FuncSignalHandler {
 								*/
 							} break;
 						case 3:
+							// Rotate the object
+							{
+								view->attach_rotate();
+							} break;
+						case 4:
+							// Delete the object
 							{
 								// Delete an attached object
 								view->attach_delete();

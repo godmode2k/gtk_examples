@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CViewAttach.cpp
 
-Last modified: Jan 30, 2015
+Last modified: Feb 8, 2015
 License:
 
 *
@@ -88,7 +88,7 @@ void CViewAttach::__init(void) {
 	m_text = NULL;
 	m_text_font_size = DEFAULT_TEXT_FONT_SIZE;
 	//m_text_font_color = (ColorARGB_st) { PAINT_COLOR_UINT8_16(255), 0, 0, 0 };
-	m_text_font_color.a = PAINT_COLOR_UINT8_16(255);
+	m_text_font_color.a = PAINT_COLOR_UINT8_16( 255 );
 	m_text_font_color.r = 0;
 	m_text_font_color.g = 0;
 	m_text_font_color.b = 0;
@@ -109,7 +109,18 @@ void CViewAttach::__init(void) {
 	m_rect.width = 100;
 	m_rect.height = 100;
 
-
+	// Object rotation
+	m_obj_rotate = false;
+	m_obj_rotate_degree = 0.f;
+	m_obj_rotate_slide_rect.x = 0;
+	m_obj_rotate_slide_rect.y = 0;
+	m_obj_rotate_slide_rect.width = DEFAULT_ROTATION_UI_SLIDER_WIDTH;
+	m_obj_rotate_slide_rect.height = DEFAULT_ROTATION_UI_SLIDER_HEIGHT;
+	m_obj_rotate_slidebar_rect.x = 0;
+	m_obj_rotate_slidebar_rect.y = 0;
+	m_obj_rotate_slidebar_rect.width = DEFAULT_DRAW_CIRCLE_RADIUS;
+	m_obj_rotate_slidebar_rect.height = DEFAULT_DRAW_CIRCLE_RADIUS;
+	m_obj_rotate_slidebar_pos = 0;
 
 	// --------------------
 	//load_image( "./test.png" );
@@ -387,6 +398,8 @@ void CViewAttach::onTouchEventDown(CKeyEvent* event, float x, float y) {
 
 	m_touchX = x;
 	m_touchY = y;
+	m_obj_rotate_slide_touchX = x;
+	m_obj_rotate_slide_touchY = y;
 
 	m_direction = is_obj_selected_direction( m_rect, m_touchX, m_touchY );
 }
@@ -404,9 +417,17 @@ void CViewAttach::onTouchEventMove(CKeyEvent* event, float x, float y) {
 	
 	//__LOGT__( TAG, "onTouchEventMove(): x = %f, y = %f", x, y );
 
-	if ( event->is_mouse_lbtn() && get_selected() ) {
-		update_position( m_direction, x, y );
+	if ( event->is_mouse_lbtn() ) {
+		if ( get_selected() ) {
+			update_position( m_direction, x, y );
+
+			// Rotation
+			if ( get_obj_rotate() ) {
+				set_obj_rotate_update_position( m_direction, x,  y );
+			}
+		}
 	}
+
 
 	//__LOGT__( TAG, "onTouchEventMove(): attach x = %d, y = %d, w = %d, h = %d",
 	//			m_rect.x, m_rect.y, m_rect.width, m_rect.height );
@@ -545,83 +566,103 @@ void CViewAttach::get_str_direction(e_ObjAttachDirection_t direction) {
 e_ObjAttachDirection_t CViewAttach::is_obj_selected_direction(GdkRectangle rect, float x, float y) {
 	//__LOGT__( TAG, "is_obj_selected_direction()" );
 	
-	const int collision_padding = DEFAULT_DRAW_CIRCLE_RADIUS;
+	const int radius = DEFAULT_DRAW_CIRCLE_RADIUS;
 	e_ObjAttachDirection_t ret = e_objAttachDirection_UNKNOWN;
 
 
 	// LEFT-TOP
-	if ( ((int)x >= (rect.x - collision_padding)) &&
-			  ((int)x <= (rect.x + collision_padding)) &&
-		 	  ((int)y >= (rect.y - collision_padding)) &&
-			  ((int)y <= (rect.y + collision_padding)) ) {
+	if ( ((int)x >= (rect.x - radius)) &&
+			((int)x <= (rect.x + radius)) &&
+			((int)y >= (rect.y - radius)) &&
+			((int)y <= (rect.y + radius)) ) {
 		ret = e_objAttachDirection_LEFT_TOP;
 	}
 	// RIGHT-TOP
-	else if ( ((int)x >= ((rect.x + rect.width) - collision_padding)) &&
-			  ((int)x <= ((rect.x + rect.width) + collision_padding)) &&
-		 	  ((int)y >= (rect.y - collision_padding)) &&
-			  ((int)y <= (rect.y + collision_padding)) ) {
+	else if ( ((int)x >= ((rect.x + rect.width) - radius)) &&
+				((int)x <= ((rect.x + rect.width) + radius)) &&
+				((int)y >= (rect.y - radius)) &&
+				((int)y <= (rect.y + radius)) ) {
 		ret = e_objAttachDirection_RIGHT_TOP;
 	}
 	// LEFT-BOTTOM
-	else if ( ((int)x >= (rect.x - collision_padding)) &&
-			  ((int)x <= (rect.x + collision_padding)) &&
-		 	  ((int)y >= ((rect.y + rect.height) - collision_padding)) &&
-			  ((int)y <= ((rect.y + rect.height) + collision_padding)) ) {
+	else if ( ((int)x >= (rect.x - radius)) &&
+				((int)x <= (rect.x + radius)) &&
+				((int)y >= ((rect.y + rect.height) - radius)) &&
+				((int)y <= ((rect.y + rect.height) + radius)) ) {
 		ret = e_objAttachDirection_LEFT_BOTTOM;
 	}
 	// RIGHT-BOTTOM
-	else if ( ((int)x >= ((rect.x + rect.width) - collision_padding)) &&
-			  ((int)x <= ((rect.x + rect.width) + collision_padding)) &&
-		 	  ((int)y >= ((rect.y + rect.height) - collision_padding)) &&
-			  ((int)y <= ((rect.y + rect.height) + collision_padding)) ) {
+	else if ( ((int)x >= ((rect.x + rect.width) - radius)) &&
+				((int)x <= ((rect.x + rect.width) + radius)) &&
+				((int)y >= ((rect.y + rect.height) - radius)) &&
+				((int)y <= ((rect.y + rect.height) + radius)) ) {
 		ret = e_objAttachDirection_RIGHT_BOTTOM;
 	}
 	// LEFT-CENTER
-	else if ( ((int)x >= (rect.x - collision_padding)) &&
-			  ((int)x <= (rect.x + collision_padding)) &&
-		 	  ((int)y >= ((rect.y + (rect.height >> 1)) - collision_padding)) &&
-			  ((int)y <= ((rect.y + (rect.height >> 1)) + collision_padding)) ) {
+	else if ( ((int)x >= (rect.x - radius)) &&
+				((int)x <= (rect.x + radius)) &&
+				((int)y >= ((rect.y + (rect.height >> 1)) - radius)) &&
+				((int)y <= ((rect.y + (rect.height >> 1)) + radius)) ) {
 		ret = e_objAttachDirection_LEFT_CENTER;
 	}
 	// RIGHT-CENTER
-	else if ( ((int)x >= ((rect.x + rect.width) - collision_padding)) &&
-			  ((int)x <= ((rect.x + rect.width) + collision_padding)) &&
-		 	  ((int)y >= ((rect.y + (rect.height >> 1)) - collision_padding)) &&
-			  ((int)y <= ((rect.y + (rect.height >> 1)) + collision_padding)) ) {
+	else if ( ((int)x >= ((rect.x + rect.width) - radius)) &&
+				((int)x <= ((rect.x + rect.width) + radius)) &&
+				((int)y >= ((rect.y + (rect.height >> 1)) - radius)) &&
+				((int)y <= ((rect.y + (rect.height >> 1)) + radius)) ) {
 		ret = e_objAttachDirection_RIGHT_CENTER;
 	}
 	// TOP-CENTER
-	else if ( ((int)x >= ((rect.x + (rect.width >> 1)) - collision_padding)) &&
-			  ((int)x <= ((rect.x + (rect.width >> 1)) + collision_padding)) &&
-		 	  ((int)y >= (rect.y - collision_padding)) &&
-			  ((int)y <= (rect.y + collision_padding)) ) {
+	else if ( ((int)x >= ((rect.x + (rect.width >> 1)) - radius)) &&
+				((int)x <= ((rect.x + (rect.width >> 1)) + radius)) &&
+				((int)y >= (rect.y - radius)) &&
+				((int)y <= (rect.y + radius)) ) {
 		ret = e_objAttachDirection_TOP_CENTER;
 	}
 	// BOTTOM-CENTER
-	else if ( ((int)x >= ((rect.x + (rect.width >> 1)) - collision_padding)) &&
-			  ((int)x <= ((rect.x + (rect.width >> 1)) + collision_padding)) &&
-		 	  ((int)y >= ((rect.y + rect.height) - collision_padding)) &&
-			  ((int)y <= ((rect.y + rect.height) + collision_padding)) ) {
+	else if ( ((int)x >= ((rect.x + (rect.width >> 1)) - radius)) &&
+				((int)x <= ((rect.x + (rect.width >> 1)) + radius)) &&
+				((int)y >= ((rect.y + rect.height) - radius)) &&
+				((int)y <= ((rect.y + rect.height) + radius)) ) {
 		ret = e_objAttachDirection_BOTTOM_CENTER;
 	}
 	// CENTER
 	else if ( ((int)x >= rect.x) && ((int)x <= (rect.x + rect.width)) &&
-		 ((int)y >= rect.y) && ((int)y <= (rect.y + rect.height)) ) {
+				((int)y >= rect.y) && ((int)y <= (rect.y + rect.height)) ) {
 		ret = e_objAttachDirection_CENTER;
+	}
+	else {
+		// ROTATE: SLIDEBAR REGION
+		if ( get_obj_rotate() ) {
+			if ( ((int)x >= (m_obj_rotate_slide_rect.x - radius)) &&
+					((int)x <= (m_obj_rotate_slide_rect.x + m_obj_rotate_slide_rect.width + radius)) &&
+					((int)y >= (m_obj_rotate_slide_rect.y - radius)) &&
+					((int)y <= (m_obj_rotate_slide_rect.y + m_obj_rotate_slide_rect.height + radius)) ) {
+				ret = e_objAttachDirection_ROTATE_SLIDEBAR_REGION;
+			}
+		}
 	}
 
 
 	// Selected
-	if ( (ret == e_objAttachDirection_UNKNOWN) || (ret == e_objAttachDirection_RESERVED) )
+	if ( (ret == e_objAttachDirection_UNKNOWN) || (ret == e_objAttachDirection_RESERVED) ) {
 		set_select( false );
-	else
+		set_obj_rotate( false );
+	}
+	else {
 		set_select( true );
+	}
 
 	//__LOGT__( TAG, "is_obj_selected_direction(): selected = %s", (get_selected()? "TRUE" : "FALSE") );
 
 
 	return ret;
+}
+
+e_ObjAttachDirection_t CViewAttach::get_selected_direction(void) {
+	//__LOGT__( TAG, "get_selected_direction()" );
+	
+	return m_direction;
 }
 
 void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, float y) {
@@ -631,7 +672,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 	//get_str_direction( m_direction );
 
 	{
-		//const int collision_padding = DEFAULT_DRAW_CIRCLE_RADIUS;
+		//const int radius = DEFAULT_DRAW_CIRCLE_RADIUS;
 		float pos_x = 0.f;
 		float pos_y = 0.f;
 
@@ -654,7 +695,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 			case e_objAttachDirection_LEFT_TOP:
 				{
 					// TOP
-					//if ( ((m_rect.y + m_rect.height) - y) < collision_padding ) {
+					//if ( ((m_rect.y + m_rect.height) - y) < radius ) {
 					//	return;
 					//}
 
@@ -670,7 +711,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 					}
 
 					// LEFT
-					//if ( ((m_rect.x + m_rect.width) - x) < collision_padding ) {
+					//if ( ((m_rect.x + m_rect.width) - x) < radius ) {
 					//	return;
 					//}
 
@@ -688,7 +729,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 			case e_objAttachDirection_RIGHT_TOP:
 				{
 					// TOP
-					//if ( ((m_rect.y + m_rect.height) - y) < collision_padding ) {
+					//if ( ((m_rect.y + m_rect.height) - y) < radius ) {
 					//	return;
 					//}
 
@@ -704,7 +745,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 					}
 
 					// RIGHT
-					//if ( (x - m_rect.x) < collision_padding ) {
+					//if ( (x - m_rect.x) < radius ) {
 					//	return;
 					//}
 
@@ -720,7 +761,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 			case e_objAttachDirection_LEFT_BOTTOM:
 				{
 					// BOTTOM
-					//if ( (y - m_rect.y) < collision_padding ) {
+					//if ( (y - m_rect.y) < radius ) {
 					//	return;
 					//}
 
@@ -734,7 +775,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 					}
 
 					// LEFT
-					//if ( ((m_rect.x + m_rect.width) - x) < collision_padding ) {
+					//if ( ((m_rect.x + m_rect.width) - x) < radius ) {
 					//	return;
 					//}
 
@@ -752,7 +793,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 			case e_objAttachDirection_RIGHT_BOTTOM:
 				{
 					// BOTTOM
-					//if ( (y - m_rect.y) < collision_padding ) {
+					//if ( (y - m_rect.y) < radius ) {
 					//	return;
 					//}
 
@@ -766,7 +807,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 					}
 
 					// RIGHT
-					//if ( (x - m_rect.x) < collision_padding ) {
+					//if ( (x - m_rect.x) < radius ) {
 					//	return;
 					//}
 
@@ -807,7 +848,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 				} break;
 			case e_objAttachDirection_LEFT_CENTER:
 				{
-					//if ( ((m_rect.x + m_rect.width) - x) < collision_padding ) {
+					//if ( ((m_rect.x + m_rect.width) - x) < radius ) {
 					//	return;
 					//}
 
@@ -824,7 +865,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 				} break;
 			case e_objAttachDirection_TOP_CENTER:
 				{
-					//if ( ((m_rect.y + m_rect.height) - y) < collision_padding ) {
+					//if ( ((m_rect.y + m_rect.height) - y) < radius ) {
 					//	return;
 					//}
 
@@ -841,7 +882,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 				} break;
 			case e_objAttachDirection_RIGHT_CENTER:
 				{
-					//if ( ((x - m_rect.x) < collision_padding ) {
+					//if ( ((x - m_rect.x) < radius ) {
 					//	return;
 					//}
 
@@ -856,7 +897,7 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 				} break;
 			case e_objAttachDirection_BOTTOM_CENTER:
 				{
-					//if ( (y - m_rect.y) < collision_padding ) {
+					//if ( (y - m_rect.y) < radius ) {
 					//	return;
 					//}
 
@@ -1172,7 +1213,7 @@ void CViewAttach::draw_image(canvas_t* canvas, const GdkRectangle rect) {
 	//__LOGT__( TAG, "draw_image()" );
 	
 	draw_image( canvas, (double)rect.x, (double)rect.y,
-				(double) rect.width, (double)rect.height );
+				(double)rect.width, (double)rect.height );
 }
 
 void CViewAttach::draw_image(canvas_t* canvas, double x, double y, double w, double h) {
@@ -1193,8 +1234,15 @@ void CViewAttach::draw_image(canvas_t* canvas, double x, double y, double w, dou
 		int img_w = cairo_image_surface_get_width( m_image );
 		int img_h = cairo_image_surface_get_height( m_image );
 
-		cairo_translate( canvas, x, y );
-		cairo_scale( canvas, w/img_w, h/img_h );
+		if ( get_obj_rotate() || (get_obj_rotate_degree() > 0.f) ) {
+			// Rotation
+			draw_obj_rotate( canvas, x, y, w, h, img_w, img_h );
+		}
+		else {
+			cairo_translate( canvas, x, y );
+			cairo_scale( canvas, w/img_w, h/img_h );
+		}
+
 
 		cairo_set_source_surface( canvas, m_image, 0, 0 );
 		cairo_paint( canvas );
@@ -1519,8 +1567,7 @@ void CViewAttach::draw_text(canvas_t* canvas, const char* text,
 		//! ITALIC, OBLIQUE doesn't work in Cairo here
 		// - Should be considered change to 'PANGO Text APIs'
 		// - (replace 'Cairo Text APIs' by 'PANGO Text APIs')
-		cairo_select_font_face( canvas, get_text_font_face(),
-				typeface, typeface_bold );
+		cairo_select_font_face( canvas, get_text_font_face(), typeface, typeface_bold );
 		cairo_set_font_size( canvas, get_text_font_size() );
 		cairo_text_extents( canvas, text, &exts );
 
@@ -1706,6 +1753,54 @@ void CViewAttach::draw_text(canvas_t* canvas, const char* text,
 	cairo_restore( canvas );
 }
 
+void CViewAttach::draw_text_only(canvas_t* canvas, const char* text,
+		double x, double y, double w, double h) {
+	//__LOGT__( TAG, "draw_text_only()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_text_only(): canvas_t == NULL" );
+		return;
+	}
+
+	if ( !text ) {
+		__LOGT__( TAG, "draw_text_only(): text == NULL" );
+		return;
+	}
+
+
+	// Text
+	cairo_save( canvas );
+	{
+		cairo_font_slant_t typeface =
+				get_text_font_typeface_cairo( e_objAttachFontTypeface_NORMAL );
+		cairo_font_weight_t typeface_bold = CAIRO_FONT_WEIGHT_NORMAL;
+		cairo_text_extents_t exts;
+		ColorARGB_st font_color;
+		const int font_size = 10;
+		const char* font_face = "Sans";
+
+		font_color.a = PAINT_COLOR_UINT8_16( 255 );
+		font_color.r = 0;
+		font_color.g = 0;
+		font_color.b = 0;
+
+
+		//! ITALIC, OBLIQUE doesn't work in Cairo here
+		// - Should be considered change to 'PANGO Text APIs'
+		// - (replace 'Cairo Text APIs' by 'PANGO Text APIs')
+		cairo_select_font_face( canvas, font_face, typeface, typeface_bold );
+		cairo_set_font_size( canvas, (double)font_size );
+		cairo_text_extents( canvas, text, &exts );
+
+		// Font Color
+		draw_paint_color( canvas, true, font_color );
+
+		cairo_move_to( canvas, x, (y - exts.y_bearing) );
+		cairo_show_text( canvas, text );
+	}
+	cairo_restore( canvas );
+}
+
 void CViewAttach::draw_text_pango(canvas_t* canvas, bool simple) {
 	//__LOGT__( TAG, "draw_text_pango()" );
 	
@@ -1793,6 +1888,15 @@ void CViewAttach::draw_text_pango(canvas_t* canvas, const char* text,
 			g_object_unref( layout );
 			*/
 
+			{
+				// Rotation
+				if ( get_obj_rotate() || (get_obj_rotate_degree() > 0.f) ) {
+					const double obj_w = w;
+					const double obj_h = h;
+
+					draw_obj_rotate( canvas, x, y, w, h, obj_w, obj_h );
+				}
+			}
 
 			layout = pango_cairo_create_layout( canvas );
 			font_desc = pango_font_description_from_string( (char*)font_name );
@@ -1843,7 +1947,15 @@ void CViewAttach::draw_text_pango(canvas_t* canvas, const char* text,
 			//cairo_text_extents_t exts;
 			//cairo_text_extents( canvas, text, &exts );
 			//cairo_move_to( canvas, x, (y - exts.y_bearing) );
-			cairo_move_to( canvas, x, y );
+			{
+				// Rotation
+				if ( get_obj_rotate() || (get_obj_rotate_degree() > 0.f) ) {
+					// None
+				}
+				else {
+					cairo_move_to( canvas, x, y );
+				}
+			}
 			// ...
 			pango_cairo_update_layout( canvas, layout );
 			pango_cairo_show_layout( canvas, layout );
@@ -2241,6 +2353,303 @@ void CViewAttach::draw_text_pango(canvas_t* canvas, const char* text,
 	cairo_restore( canvas );
 }
 
+void CViewAttach::set_obj_rotate(bool rotate) {
+	//__LOGT__( TAG, "set_obj_rotate()" );
+	
+	m_obj_rotate = rotate;
+}
+
+void CViewAttach::set_obj_rotate(bool rotate, double degree) {
+	//__LOGT__( TAG, "set_obj_rotate()" );
+	
+	m_obj_rotate = rotate;
+	m_obj_rotate_degree = degree;
+}
+
+bool CViewAttach::get_obj_rotate(void) {
+	//__LOGT__( TAG, "get_obj_rotate()" );
+	
+	return m_obj_rotate;
+}
+
+void CViewAttach::set_obj_rotate_degree(double degree) {
+	//__LOGT__( TAG, "set_obj_rotate_degree()" );
+	
+	m_obj_rotate_degree = degree;
+}
+
+double CViewAttach::get_obj_rotate_degree(void) {
+	//__LOGT__( TAG, "get_obj_rotate_degree()" );
+	
+	return m_obj_rotate_degree;
+}
+
+void CViewAttach::set_obj_rotate_degree_positive(bool positive) {
+	//__LOGT__( TAG, "set_obj_rotate_degree_positive()" );
+	
+	m_obj_rotate_degree_positive = positive;
+}
+
+bool CViewAttach::get_obj_rotate_degree_positive(void) {
+	//__LOGT__( TAG, "get_obj_rotate_degree_positive()" );
+	
+	return m_obj_rotate_degree_positive;
+}
+
+void CViewAttach::draw_obj_rotate(canvas_t* canvas, const GdkRectangle rect,
+		double obj_w, double obj_h) {
+	//__LOGT__( TAG, "draw_obj_rotate()" );
+	
+	draw_obj_rotate( canvas, (double)rect.x, (double)rect.y,
+			(double)rect.width, (double)rect.height, obj_w, obj_h );
+}
+
+void CViewAttach::draw_obj_rotate(canvas_t* canvas, double x, double y, double w, double h,
+		double obj_w, double obj_h) {
+	//__LOGT__( TAG, "draw_obj_rotate()" );
+	
+	draw_obj_rotate( canvas, get_obj_rotate_degree(), x, y, w, h, obj_w, obj_h );
+}
+
+void CViewAttach::draw_obj_rotate(canvas_t* canvas, double degree, double x, double y,
+		double w, double h, double obj_w, double obj_h) {
+	//__LOGT__( TAG, "draw_obj_rotate()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_obj_rotate(): canvas_t == NULL" );
+		return;
+	}
+
+
+	{
+		// Angle in radians
+		//  = angle in degrees * (PI / 180)
+		if ( degree >= 0.f ) {
+			const double new_x = x + (w / 2);
+			const double new_y = y + (h / 2);
+			const double adjust = (-0.5f);
+
+			cairo_translate( canvas, new_x, new_y );
+			cairo_rotate( canvas, degree * (M_PI / 180) );
+			cairo_scale( canvas, w/obj_w, h/obj_h );
+
+			// adjust the rotated position
+			cairo_translate( canvas, (obj_w * adjust), (obj_h * adjust) );
+		}
+	}
+}
+
+void CViewAttach::draw_obj_rotate_ui(canvas_t* canvas, double x, double y) {
+	//__LOGT__( TAG, "draw_obj_rotate_ui()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_obj_rotate(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		const double w = (double)m_obj_rotate_slide_rect.width;
+		const double h = (double)m_obj_rotate_slide_rect.height;
+
+		m_obj_rotate_slide_rect.x = x;
+		m_obj_rotate_slide_rect.y = (y + DEFAULT_ROTATION_UI_SLIDER_HEIGHT_PADDING);
+
+		draw_obj_rotate_ui( canvas, x, (y + DEFAULT_ROTATION_UI_SLIDER_HEIGHT_PADDING),
+							w, h );
+	}
+}
+
+void CViewAttach::draw_obj_rotate_ui(canvas_t* canvas, double x, double y, double w, double h) {
+	//__LOGT__( TAG, "draw_obj_rotate_ui()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_obj_rotate(): canvas_t == NULL" );
+		return;
+	}
+
+
+	cairo_save( canvas );
+	{
+		const int radius = DEFAULT_DRAW_CIRCLE_RADIUS;
+
+		// ----------0----------	// Current degree
+		// ------<---*--->------	// SLIDEBAR
+		// -180  ..  0  ..  +180	// DEGREES
+		// +-------------------+
+
+
+		// Paint
+		draw_paint_color( canvas, true, e_objAttachPaintColor_RED );
+
+		//cairo_rectangle( canvas, x, y, w, h );
+		cairo_set_line_width( canvas, h );
+		cairo_move_to( canvas, x, y );
+		cairo_line_to( canvas, (x + w), y );
+
+		{
+			m_obj_rotate_slidebar_rect.y = (int)y;
+
+			if ( m_obj_rotate_slidebar_rect.x == 0 ) {
+				m_obj_rotate_slidebar_rect.x = ( (int)x + ((int)w >> 1) );
+				//( (int)m_obj_rotate_slide_rect.x + ((int)m_obj_rotate_slide_rect.width >> 1) );
+				m_obj_rotate_slidebar_pos = ((int)w >> 1);
+			}
+			else {
+				if ( x >= 0 )
+					m_obj_rotate_slidebar_rect.x = ((int)x + m_obj_rotate_slidebar_pos);
+				else
+					m_obj_rotate_slidebar_rect.x = (m_obj_rotate_slidebar_pos + (int)x);
+			}
+
+
+			draw_circle( canvas, m_obj_rotate_slidebar_rect.x, y, radius, false );
+
+
+			// Text
+			{
+				// -180 ~ +180
+				int degree = 0;
+				char cur_degree[DEFAULT_ROTATION_UI_SLIDER_STR_SIZE + 1] = { 0, };
+
+				if ( get_obj_rotate_degree() >= 180.f ) {
+					// -180 ~ 0
+					degree = (int)(get_obj_rotate_degree() - 360.f);
+
+					// -180 or +180
+					if ( (get_obj_rotate_degree() == 180) &&
+							get_obj_rotate_degree_positive() ) {
+						degree = abs(degree);
+					}
+				}
+				else {
+					// 0 ~ 179
+					degree = (int)get_obj_rotate_degree();
+				}
+				
+
+				// -180
+				draw_text_only( canvas, DEFAULT_ROTATION_UI_SLIDER_STR_N180,
+								(x - (double)radius), (y + (double)radius), 5, 4 );
+				// +180
+				draw_text_only( canvas, DEFAULT_ROTATION_UI_SLIDER_STR_P180,
+								((x + w) - (double)(radius << 1)), (y + (double)radius), 5, 4 );
+				// 0
+				draw_text_only( canvas, DEFAULT_ROTATION_UI_SLIDER_STR_0,
+								((x + (double)((int)w >> 1)) - (double)(radius >> 1)),
+								(y + (double)radius), 5, 4 );
+
+				// Current value
+				snprintf( cur_degree, sizeof(cur_degree), "%d", degree );
+				draw_text_only( canvas, cur_degree,
+								((x + (double)((int)w >> 1)) - (double)(radius >> 1)),
+								(y - (double)(radius << 1)), 5, 4 );
+			}
+		}
+
+		cairo_stroke( canvas );
+		cairo_stroke_preserve( canvas );
+	}
+	cairo_restore( canvas );
+}
+
+void CViewAttach::set_obj_rotate_update_position(e_ObjAttachDirection_t direction, float x, float y) {
+	//__LOGT__( TAG, "set_obj_rotate_update_position()" );
+	
+	{
+		double pos_x = 0.f;
+		double fv = 0.f;
+		double degree = 0.f;
+
+
+		if ( (x < 0 ) || (direction != e_objAttachDirection_ROTATE_SLIDEBAR_REGION) ) {
+			return;
+		}
+
+
+		if ( (int)x < m_obj_rotate_slide_rect.x ) {
+			m_obj_rotate_slidebar_rect.x = m_obj_rotate_slide_rect.x;
+			//pos_x = 0.f;
+			m_obj_rotate_slidebar_pos = 0;
+		}
+		else if ( (int)x > (m_obj_rotate_slide_rect.x + m_obj_rotate_slide_rect.width) ) {
+			m_obj_rotate_slidebar_rect.x =
+				(m_obj_rotate_slide_rect.x + m_obj_rotate_slide_rect.width);
+			//pos_x = (double)m_obj_rotate_slide_rect.width;
+			m_obj_rotate_slidebar_pos = m_obj_rotate_slide_rect.width;
+		}
+
+		{
+			if ( m_obj_rotate_slide_touchX > x ) {
+				pos_x = (double)(m_obj_rotate_slide_touchX - x);
+				//m_obj_rotate_slidebar_rect.x -= (int)pos_x;
+				m_obj_rotate_slide_touchX -= (int)pos_x;
+
+				m_obj_rotate_slidebar_pos -= pos_x;
+			}
+			else if ( m_obj_rotate_slide_touchX < x ) {
+				pos_x = (double)(x - m_obj_rotate_slide_touchX);
+				//m_obj_rotate_slidebar_rect.x += (int)pos_x;
+				m_obj_rotate_slide_touchX += (int)pos_x;
+
+				m_obj_rotate_slidebar_pos += pos_x;
+			}
+
+			if ( m_obj_rotate_slidebar_pos < 0 ) {
+				m_obj_rotate_slidebar_pos = 0;
+			}
+			else if ( m_obj_rotate_slidebar_pos > m_obj_rotate_slide_rect.width ) {
+				m_obj_rotate_slidebar_pos = m_obj_rotate_slide_rect.width;
+			}
+		}
+
+
+		// fraction(0 to 1) value for the range 0 to (DEFAULT_ROTATION_UI_SLIDER_WIDTH - 1)
+		fv = (double)(m_obj_rotate_slidebar_rect.x - m_obj_rotate_slide_rect.x);
+		if ( fv < 0 ) { fv = 0.f; }
+		if ( fv > DEFAULT_ROTATION_UI_SLIDER_WIDTH ) {
+			fv = (double)DEFAULT_ROTATION_UI_SLIDER_WIDTH;
+		}
+		//__LOGT__( TAG, "set_obj_rotate_update_position(): x = %f, fv = %f", x, fv );
+		fv = (fv / 180.f);		// interval 2
+		//fv = (fv / 360.f);
+		//__LOGT__( TAG, "set_obj_rotate_update_position(): x = %f, new fv = %f", x, fv );
+
+		// width: 180 (0 to 179)
+		// degrees: 180 (0 to 180, interval 2)
+		//
+		// --------------------
+		// 0       100      179
+		// --------------------
+		// 0  ...  90  ...  180
+		// 360     0        180
+		// -180    0       +180
+
+		//degree = (fv * 180.f);
+		degree = (fv * 360.f);		// 0 to 360 degrees
+		//__LOGT__( TAG, "set_obj_rotate_update_position(): degree = %f", degree );
+		if ( fv == 0.5f ) {
+			degree = 0.f;
+		}
+		else {
+			//degree = (fv < 0.5f)? (270.f + degree) : (degree - 90.f);
+			//degree = (fv < 0.5f)? (180.f + degree) : (degree - 180.f);
+
+			if ( fv < 0.5f ) {
+				degree = (180.f + degree);
+				set_obj_rotate_degree_positive( false );
+			}
+			else {
+				degree = (degree - 180.f);
+				set_obj_rotate_degree_positive( true );
+			}
+		}
+
+
+		//__LOGT__( TAG, "set_obj_rotate_update_position(): new degree = %f", degree );
+		set_obj_rotate_degree( degree );
+	}
+}
+
 
 // --------------------
 
@@ -2285,92 +2694,102 @@ void CViewAttach::draw_obj(canvas_t* canvas) {
 			return;
 		}
 
+		// Rotation
+		{
+			if ( get_obj_rotate() ) {
+				draw_obj_rotate_ui( canvas, (double)m_rect.x, (double)(m_rect.y + m_rect.height) );
+			}
+		}
 
 
 		// Clear previous path
 		//cairo_new_sub_path( canvas );
 
 
-		// Paint
-		draw_paint_color( canvas, true, e_objAttachPaintColor_RED );
+		// Object rectangle
+		cairo_save( canvas );
+		{
+			// Paint
+			draw_paint_color( canvas, true, e_objAttachPaintColor_RED );
 
-
-		if ( get_selected() ) {
-			// Draw rectangle
-			//gdk_cairo_rectangle( canvas, &m_rect );
-			{
-				// dotted(dashed) rectangle
-				const double dashed[] = { 3.0f, 3.0f };
-				const int dashed_len = sizeof(dashed) / sizeof(dashed[0]);
-
-				cairo_save( canvas );
+			if ( get_selected() ) {
+				// Draw rectangle
+				//gdk_cairo_rectangle( canvas, &m_rect );
 				{
-					cairo_set_line_width( canvas, 1.0f );
-					cairo_set_dash( canvas, dashed, dashed_len, 0 );
-					cairo_rectangle( canvas, m_rect.x, m_rect.y, m_rect.width, m_rect.height );
-					cairo_stroke( canvas );
+					// dotted(dashed) rectangle
+					const double dashed[] = { 3.0f, 3.0f };
+					const int dashed_len = sizeof(dashed) / sizeof(dashed[0]);
+
+					cairo_save( canvas );
+					{
+						cairo_set_line_width( canvas, 1.0f );
+						cairo_set_dash( canvas, dashed, dashed_len, 0 );
+						cairo_rectangle( canvas, m_rect.x, m_rect.y, m_rect.width, m_rect.height );
+						cairo_stroke( canvas );
+					}
+					cairo_restore( canvas );
 				}
-				cairo_restore( canvas );
+
+
+				//
+				// Draw a circle for respective direction as following:
+				//  - 4 ways(Left, Right, Top, Bottom)
+				//  - Diagonal line position
+				//
+				//		x------x------x
+				//		| .         . |
+				//		|   .     .   |
+				//		x      x      x
+				//		|    .   .    |
+				//		| .         . |
+				//		x------x------x
+				//
+
+				x = m_rect.x;
+				y = m_rect.y;
+				// move the drawing origin to the x and y
+				//cairo_translate( canvas, x, y );
+				// add a new circular path to the cairo drawing context
+				//cairo_arc( canvas, x, y, radius, 0, (2 * M_PI) );
+				// the existing path is not affected before calling cairo_arc()
+				//cairo_new_sub_path( canvas );
+
+				// Left-Top
+				draw_circle( canvas, x, y, radius );
+				// Right-Top
+				x = ( m_rect.x + m_rect.width );
+				draw_circle( canvas, x, y, radius );
+				// Center-Top
+				x = ( m_rect.x + (m_rect.width >> 1) );
+				draw_circle( canvas, x, y, radius );
+
+				x = m_rect.x;
+				y = ( m_rect.y + m_rect.height );
+
+				// Left-Bottom
+				draw_circle( canvas, x, y, radius );
+				// Right-Bottom
+				x = ( m_rect.x + m_rect.width );
+				draw_circle( canvas, x, y, radius );
+				// Center-Bottom
+				x = ( m_rect.x + (m_rect.width >> 1) );
+				draw_circle( canvas, x, y, radius );
+
+				x = m_rect.x;
+				y = ( m_rect.y + (m_rect.height >> 1) );
+
+				// Left,Right-Center
+				draw_circle( canvas, x, y, radius );
+				x = ( m_rect.x + m_rect.width );
+				draw_circle( canvas, x, y, radius );
+
+
+
+				// draws the outline of the circle
+				cairo_stroke_preserve( canvas );
 			}
-
-
-			//
-			// Draw a circle for respective direction as following:
-			//  - 4 ways(Left, Right, Top, Bottom)
-			//  - Diagonal line position
-			//
-			//		x------x------x
-			//		| .         . |
-			//		|   .     .   |
-			//		x      x      x
-			//		|    .   .    |
-			//		| .         . |
-			//		x------x------x
-			//
-
-			x = m_rect.x;
-			y = m_rect.y;
-			// move the drawing origin to the x and y
-			//cairo_translate( canvas, x, y );
-			// add a new circular path to the cairo drawing context
-			//cairo_arc( canvas, x, y, radius, 0, (2 * M_PI) );
-			// the existing path is not affected before calling cairo_arc()
-			//cairo_new_sub_path( canvas );
-
-			// Left-Top
-			draw_circle( canvas, x, y, radius );
-			// Right-Top
-			x = ( m_rect.x + m_rect.width );
-			draw_circle( canvas, x, y, radius );
-			// Center-Top
-			x = ( m_rect.x + (m_rect.width >> 1) );
-			draw_circle( canvas, x, y, radius );
-
-			x = m_rect.x;
-			y = ( m_rect.y + m_rect.height );
-
-			// Left-Bottom
-			draw_circle( canvas, x, y, radius );
-			// Right-Bottom
-			x = ( m_rect.x + m_rect.width );
-			draw_circle( canvas, x, y, radius );
-			// Center-Bottom
-			x = ( m_rect.x + (m_rect.width >> 1) );
-			draw_circle( canvas, x, y, radius );
-
-			x = m_rect.x;
-			y = ( m_rect.y + (m_rect.height >> 1) );
-
-			// Left,Right-Center
-			draw_circle( canvas, x, y, radius );
-			x = ( m_rect.x + m_rect.width );
-			draw_circle( canvas, x, y, radius );
-
-
-
-			// draws the outline of the circle
-			cairo_stroke_preserve( canvas );
 		}
+		cairo_restore( canvas );
 	}
 
 /*

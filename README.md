@@ -98,4 +98,8 @@ Screenshots
 
 ![alt tag](https://github.com/godmode2k/gtk_examples/raw/master/screenshots/screenshot_09.png)
 
+> Rotation
+
+![alt tag](https://github.com/godmode2k/gtk_examples/raw/master/screenshots/screenshot_10.png)
+
 

@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CBaseView.h
 
-Last modified: Feb 2, 2015
+Last modified: Feb 7, 2015
 License:
 
 *
@@ -260,7 +260,8 @@ typedef enum _e_objAttachDirection_t {
 	e_objAttachDirection_LEFT_CENTER,
 	e_objAttachDirection_TOP_CENTER,
 	e_objAttachDirection_RIGHT_CENTER,
-	e_objAttachDirection_BOTTOM_CENTER
+	e_objAttachDirection_BOTTOM_CENTER,
+	e_objAttachDirection_ROTATE_SLIDEBAR_REGION
 } e_ObjAttachDirection_t;
 
 // Popup Menu

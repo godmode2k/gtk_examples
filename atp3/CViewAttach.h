@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CViewAttach.h
 
-Last modified: Jan 30, 2015
+Last modified: Feb 8, 2015
 License:
 
 *
@@ -92,6 +92,16 @@ Note:
 	(((val / 2) > 0)? (val / 2) : DEFAULT_TEXT_GLYPH_WHITESPACE_WIDTH)
 #define DEFAULT_TEXT_PANGO_SCALE_BIT			10	// PANGO_SCALE(1024)
 
+// Rotation
+#define DEFAULT_ROTATION_UI_SLIDER_WIDTH			180
+#define DEFAULT_ROTATION_UI_SLIDER_HEIGHT			4
+#define DEFAULT_ROTATION_UI_SLIDER_HEIGHT_PADDING	30
+#define DEFAULT_ROTATION_UI_SLIDER_POS_ADJUST		0.f
+#define DEFAULT_ROTATION_UI_SLIDER_STR_N180			"-180"
+#define DEFAULT_ROTATION_UI_SLIDER_STR_P180			"+180"
+#define DEFAULT_ROTATION_UI_SLIDER_STR_0			"0"
+#define DEFAULT_ROTATION_UI_SLIDER_STR_SIZE			4
+
 
 
 #ifdef __cplusplus
@@ -114,6 +124,7 @@ typedef enum _e_objAttachFontTypeface_t {
 } e_ObjAttachFontTypeface_t;
 
 /*
+// CBaseView.h
 // Attached objact direction
 typedef enum _e_objAttachDirection_t {
 	e_objAttachDirection_UNKNOWN = -1,
@@ -131,7 +142,8 @@ typedef enum _e_objAttachDirection_t {
 	e_objAttachDirection_LEFT_CENTER,
 	e_objAttachDirection_TOP_CENTER,
 	e_objAttachDirection_RIGHT_CENTER,
-	e_objAttachDirection_BOTTOM_CENTER
+	e_objAttachDirection_BOTTOM_CENTER,
+	e_objAttachDirection_ROTATE_SLIDEBAR_REGION
 } e_ObjAttachDirection_t;
 */
 
@@ -194,6 +206,7 @@ private:
 	e_ObjAttachType_t m_obj_type;
 	bool m_selected;
 
+	// Rectangle
 	GdkRectangle m_rect;
 	float m_touchX, m_touchY;
 	e_ObjAttachDirection_t m_direction;
@@ -205,6 +218,15 @@ private:
 	e_ObjAttachFontTypeface_t m_text_font_typeface;
 	bool m_text_font_bold;
 	cairo_surface_t* m_image;
+
+	// Rotation
+	bool m_obj_rotate;
+	double m_obj_rotate_degree;
+	bool m_obj_rotate_degree_positive;
+	int m_obj_rotate_slidebar_pos;		// relative position
+	GdkRectangle m_obj_rotate_slide_rect;
+	GdkRectangle m_obj_rotate_slidebar_rect;
+	float m_obj_rotate_slide_touchX, m_obj_rotate_slide_touchY;
 protected:
 public:
 	// Ctor/Dtor
@@ -262,6 +284,7 @@ public:
 	bool is_obj_selected(GdkRectangle rect, float x, float y);
 	void get_str_direction(e_ObjAttachDirection_t direction);
 	e_ObjAttachDirection_t is_obj_selected_direction(GdkRectangle rect, float x, float y);
+	e_ObjAttachDirection_t get_selected_direction(void);
 	void update_position(e_ObjAttachDirection_t direction, float x, float y);
 	GdkRectangle get_rect(void);
 
@@ -309,10 +332,29 @@ public:
 	void draw_text(canvas_t* canvas, const char* text, const GdkRectangle rect);
 	void draw_text(canvas_t* canvas, const char* text, double x, double y);
 	void draw_text(canvas_t* canvas, const char* text, double x, double y, double w, double h);
+	void draw_text_only(canvas_t* canvas, const char* text, double x, double y, double w, double h);
 	void draw_text_pango(canvas_t* canvas, bool simple = true);
 	void draw_text_pango(canvas_t* canvas, const char* text, const GdkRectangle rect, bool simple = true);
 	void draw_text_pango(canvas_t* canvas, const char* text, double x, double y, bool simple = true);
 	void draw_text_pango(canvas_t* canvas, const char* text, double x, double y, double w, double h, bool simple = true);
+
+	// Rotation
+	//!  - Rotate the object image and text(Pango only currently)
+	void set_obj_rotate(bool rotate);
+	void set_obj_rotate(bool rotate, double degree);
+	bool get_obj_rotate(void);
+	void set_obj_rotate_degree(double degree);
+	double get_obj_rotate_degree(void);
+	void set_obj_rotate_degree_positive(bool positive);
+	bool get_obj_rotate_degree_positive(void);
+	void draw_obj_rotate(canvas_t* canvas, const GdkRectangle rect, double obj_w, double obj_h);
+	void draw_obj_rotate(canvas_t* canvas, double x, double y, double w, double h,
+			double obj_w, double obj_h);
+	void draw_obj_rotate(canvas_t* canvas, double degree, double x, double y, double w, double h,
+			double obj_w, double obj_h);
+	void draw_obj_rotate_ui(canvas_t* canvas, double x, double y);
+	void draw_obj_rotate_ui(canvas_t* canvas, double x, double y, double w, double h);
+	void set_obj_rotate_update_position(e_ObjAttachDirection_t direction, float x, float y);
 
 	// Draw all of objects
 	void draw_obj(canvas_t* canvas);
