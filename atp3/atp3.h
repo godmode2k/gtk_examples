@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	atp3.h
 
-Last modified: Jan 23, 2015
+Last modified: Jun 2, 2015
 License:
 
 *
@@ -92,6 +92,7 @@ Note:
 
 //! Definition
 // ---------------------------------------------------------------
+#define TAG_MAIN					"ATP3"
 #define DEFAULT_STR_MAX_FILENAME	255
 
 // UI XML
@@ -115,6 +116,10 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+
+// Animation Task
+#define ATTACH_ANIMTASK_TIMER_CB_TIME		10	// millisecond
 
 
 #ifdef __cplusplus
@@ -154,6 +159,9 @@ typedef struct _Widgets_st {
 
 // Signal Handler
 #include "incl_g_func_signal_handler.hxx"
+
+// Timer Handler
+#include "incl_timer_handler.hxx"
 // ---------------------------------------------------------------
 
 
@@ -198,6 +206,9 @@ private:
 	CViewMain* m_pCViewMain;
 	CKeyEvent m_key_event;
 	bool m_show_popup_menu;
+
+	// Timer handler for redraw
+	//CTimerHandler* m_pHandler_redraw;
 protected:
 public:
 	// Ctor/Dtor
@@ -216,6 +227,10 @@ public:
 	// Initialize
 	bool init_widget_all(Widgets_st** pWidgets);
 	bool init_ui_with_callback(void);
+
+	const char* get_tag(void) { return TAG; }
+
+	// ---------------------------------------------------------------
 
 	// Keyboard & Mouse Event
 	// ---------------------------------------------------------------

@@ -67,24 +67,6 @@ TODO:
 // ---------------------------------------------------------------
 
 namespace g_Func {
-	// Callback
-	
-
-	// Gtk Window Quit
-	void main_window_quit(GtkWidget* widget, gpointer user_data) {
-		__LOGT__( TAG__g_Func, "main_window_quit()" );
-
-		// Global instance
-		if ( g_pCAtp3 ) {
-			delete g_pCAtp3;
-			g_pCAtp3 = NULL;
-		}
-
-
-		// Finish Application
-		gtk_main_quit();
-	}
-
 	// File Open Dialog
 	char* file_open_dialog(GtkWidget* widget, gpointer user_data) {
 		//__LOGT__( TAG__g_Func, "file_open_dialog()" );

@@ -63,9 +63,6 @@ extern "C" {
 namespace g_Func {
 	#define TAG__g_Func		"g_Func"
 
-	// Gtk Window Quit
-	void main_window_quit(GtkWidget* widget, gpointer user_data);
-
 	// File Open Dialog
 	//  - MUST release the return value with g_free() or free() or 'delete'
 	//	- devolve release to caller

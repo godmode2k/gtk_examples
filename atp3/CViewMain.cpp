@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CViewMain.cpp
 
-Last modified: Feb 8, 2015
+Last modified: Feb 1, 2016
 License:
 
 *
@@ -86,6 +86,10 @@ void CViewMain::__init(void) {
 	// Attachment
 	m_pvec_attach = new std::vector<CViewAttach*>;
 
+	// Animation Task
+	m_pCViewSlideWindow = new CViewSlideWindow;
+	set_attach_animstask_update( false );
+
 
 	// Temporary
 	//  - Font information
@@ -103,6 +107,13 @@ void CViewMain::__init(void) {
 	m_screenshot_touchX = m_screenshot_touchY = 0.f;
 	m_screenshot_direction = e_objAttachDirection_UNKNOWN;
 	memset( (void*)&m_screenshot_pathname, 0x00, sizeof(m_screenshot_pathname) );
+
+
+	// Patchers IO
+	m_attach_patchers_io_show = false;
+
+
+
 
 	//! TEST
 	// --------------------
@@ -148,35 +159,13 @@ void CViewMain::__release(void) {
 		delete m_pvec_attach;
 		m_pvec_attach = NULL;
 	}
+
+	// Animation Task
+	if ( m_pCViewSlideWindow ) {
+		delete m_pCViewSlideWindow;
+		m_pCViewSlideWindow = NULL;
+	}
 }
-
-#if 0
-// Initialize Widget structure
-bool CViewMain::init_widget_all(Widgets_st** pWidgets) {
-	__LOGT__( TAG, "init_widget_all()" );
-
-	(*pWidgets) = g_slice_new( Widgets_st );
-
-	if ( pWidgets == NULL )
-		return false;
-	/*
-	// ...
-	if ( (*pWidgets)->pWindow == NULL )
-		return false;
-
-	(*pWidgets)->pWindow = NULL;
-	*/
-
-	return true;
-}
-
-// Initialize
-bool CViewMain::init_ui_with_callback(void) {
-	__LOGT__( TAG, "init_ui_with_callback()" );
-
-	return true;
-}
-#endif
 
 
 
@@ -256,6 +245,10 @@ void CViewMain::draw(CBaseView* view) {
 		//m_attach.invalidate( view );
 
 		attach_invalidate( view );
+
+
+		//! TEST: Animation Task
+		attach_animstask( view );
 	}
 
 
@@ -1910,6 +1903,16 @@ bool CViewMain::attach_invalidate(CBaseView* view) {
 					attach->set_obj_rotate( false );
 				}
 
+				{
+					attach->set_text_show_boundary( attach_text_boundary_get_show() );
+				}
+
+				// Patchers IO
+				{
+					attach->patchers_io_set_attached_list( (*m_pvec_attach) );
+					attach->patchers_io_set_show( attach_patchers_io_get_show() );
+				}
+
 				attach->invalidate( view );
 			}
 		} // for()
@@ -2050,6 +2053,76 @@ void CViewMain::attach_bring_to_front(void) {
 		*/
 	}
 }
+
+//! TODO: Needs container
+void CViewMain::attach_animstask(CBaseView* view) {
+	//__LOGT__( TAG, "attach_animstask()" );
+	
+
+	if ( !m_pCViewSlideWindow ) {
+		__LOGT__( TAG, "attach_animstask(): CViewSlideWindow == NULL" );
+		return;
+	}
+
+
+	//! trick for gtk_widget_queue_draw() in multi-thread...
+	// - SEE: atp3.cpp: atp3::init_ui_with_callbackg(): g_timeout_add()...
+	if ( m_pCViewSlideWindow->get_show() /* || ... */) {
+		set_attach_animstask_update( true );
+	}
+	else {
+		set_attach_animstask_update( false );
+	}
+
+
+	//! TODO: fade-out
+	if ( m_pCViewSlideWindow->get_show() ) {
+		//__LOGT__( TAG, "attach_animstask(): [TEST]: CViewSlideWindow" );
+		m_pCViewSlideWindow->invalidate( view );
+	}
+}
+
+void CViewMain::attach_animstask_show_slide_window(bool show) {
+	//__LOGT__( TAG, "attach_animstask_show_slide_window()" );
+	
+	//__LOGT__( TAG, "attach_animstask_show_slide_window(): show = %s",
+	//			(show? "TRUE" : "FALSE") );
+	
+	if ( !m_pCViewSlideWindow ) {
+		__LOGT__( TAG, "attach_animstask_show_slide_window(): CViewSlideWindow == NULL" );
+		return;
+	}
+
+
+	m_pCViewSlideWindow->set_width_height( (get_display_width() >> 1), get_display_height() );
+	//m_pCViewSlideWindow->set_top_view( get_top_view() );
+	//m_pCViewSlideWindow->set_canvas( get_canvas() );
+	m_pCViewSlideWindow->set_show( show );
+}
+
+bool CViewMain::get_attach_animstask_done(void) {
+	//__LOGT__( TAG, "get_attach_animstask_done()" );
+	
+	if ( !m_pCViewSlideWindow ) {
+		__LOGT__( TAG, "get_attach_animstask_done(): CViewSlideWindow == NULL" );
+		return false;
+	}
+
+	return m_pCViewSlideWindow->get_done();
+}
+
+void CViewMain::attach_text_boundary_show(void) {
+	//__LOGT__( TAG, "attach_text_boundary_show()" );
+
+	m_attach_text_boundary_show = !m_attach_text_boundary_show;
+}
+
+void CViewMain::attach_patchers_io_show(void) {
+	//__LOGT__( TAG, "attach_patchers_io_show()" );
+
+	m_attach_patchers_io_show = !m_attach_patchers_io_show;
+}
+
 // ---------------------------------------------------------------
 
 
@@ -2057,101 +2130,6 @@ void CViewMain::attach_bring_to_front(void) {
 //! Implementation
 // ---------------------------------------------------------------
 // Global variable
-
-namespace g_Func {
-} // namespace g_Func
-
-namespace g_FuncSignalHandler {
-} // namespace g_FuncSignalHandler
-
-
-#if 0
-// class CASyncTask [
-CAsyncTask::CAsyncTask(void) : TAG("CAsyncTask") {
-	__LOGT__( TAG, "CAsyncTask()" );
-
-	m_pSpinner = NULL;
-}
-
-CAsyncTask::~CAsyncTask(void) {
-	__LOGT__( TAG, "~CAsyncTask()" );
-}
-
-void* CAsyncTask::inBackground(std::vector<void*>* pvecVal) {
-	__LOGT__( TAG, "inBackground()" );
-
-	// TEST
-	/*
-	for ( int i = 0; i < 10; i++ ) {
-		__LOGT__( TAG, "inBackground(): i = %d", i );
-		update( (void*)"#---update---#" );
-	}
-	__LOGT__( TAG, "" );
-
-	if ( pvecVal && (pvecVal->size() > 0) ) {
-		std::vector<void*>::iterator iter;
-		//for ( iter = pvecVal->begin(); iter != pvecVal->end(); iter++ ) {
-		//	__LOGT__( TAG, "inBackground(): str -> %s", (char*)(*iter) );
-		//}
-
-		__LOGT__( TAG, "inBackground(): str[0] -> %s", (char*)(*pvecVal)[0] );
-		__LOGT__( TAG, "inBackground(): str[1] -> %s", (char*)(*pvecVal)[1] );
-		__LOGT__( TAG, "inBackground(): str[2] -> %d", (int)(*pvecVal)[2] );
-		__LOGT__( TAG, "inBackground(): str[3] -> %s", (char*)(*pvecVal)[3] );
-	}
-
-
-	//return NULL;
-	return ((void*)true);
-	*/
-
-
-
-	return ((void*)true);
-}
-
-void CAsyncTask::progressUpdate(void* pVal) {
-	__LOGT__( TAG, "progressUpdate()" );
-
-	char* pStr = reinterpret_cast<char*>(pVal);
-	if ( pStr )
-		__LOGT__( TAG, "%s", pStr );
-}
-
-void CAsyncTask::postExecute(void* pResult, void* pExtraVal) {
-	__LOGT__( TAG, "postExecute()" );
-
-	int result = reinterpret_cast<int>(pResult);
-	__LOGT__( TAG, "postExecute(): result = %s", (result? "TRUE" : "FALSE") );
-
-	if ( pExtraVal ) {
-		GtkWidget* pDlg = NULL;
-		pDlg = GTK_WIDGET( pExtraVal );
-		
-		//! DO NOT USE THE FOLLOWING
-		/*
-		//GtkSpinner* pSpinner = ((Widgets_st*)pExtraVal)->pSpinner;
-		if ( m_pSpinner ) {
-			__LOGT__( TAG, "postExecute(): Stop Spinner" );
-			gtk_spinner_stop( m_pSpinner );
-			m_pSpinner = NULL;
-		}
-
-		if ( pDlg ) {
-			__LOGT__( TAG, "postExecute(): Destroy Dialog" );
-			gtk_widget_hide( pDlg );
-			gtk_widget_destroy( pDlg );
-			pDlg = NULL;
-		}
-		*/
-
-		if ( pDlg ) {
-			__LOGT__( TAG, "postExecute(): Send a signal to Destroy Dialog" );
-			gtk_dialog_response( GTK_DIALOG(pDlg), GTK_RESPONSE_NONE );
-		}
-	}
-}
-// class CASyncTask ]
-#endif
+//
 // ---------------------------------------------------------------
 

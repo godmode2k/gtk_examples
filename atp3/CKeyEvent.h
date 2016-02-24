@@ -86,7 +86,7 @@ typedef enum _e_eventType_t {
 	e_eventType_KEY_INPUT = 1,
 
 	// Mouse
-	e_eventType_MOUSE_INPUT,
+	e_eventType_MOUSE_INPUT
 } e_EventType_t;
 
 typedef enum _e_eventAction_t {
@@ -116,6 +116,7 @@ typedef enum _e_eventAction_t {
 
 //! Prototype
 // ---------------------------------------------------------------
+/*
 namespace g_Func {
 	#define TAG__g_Func		"g_Func"
 } // namespace g_Func
@@ -126,6 +127,7 @@ namespace g_FuncSignalHandler {
 	// Menu Item: Button
 	//void on_button_open_clicked(GtkWidget* widget, gpointer user_data);
 } // namespace g_FuncSignalHandler
+*/
 
 // ---------------------------------------------------------------
 

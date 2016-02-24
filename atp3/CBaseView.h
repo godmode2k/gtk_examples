@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CBaseView.h
 
-Last modified: Feb 7, 2015
+Last modified: Jun 15, 2015
 License:
 
 *
@@ -124,7 +124,7 @@ typedef struct _ColorARGB_st {
 	guint16 r;
 	guint16 g;
 	guint16 b;
-} ColorARGB_st;
+} __PACK__ ColorARGB_st;
 
 typedef enum _e_objAttachPaintColor_t {
 	e_objAttachPaintColor_BLACK = 1,
@@ -261,7 +261,11 @@ typedef enum _e_objAttachDirection_t {
 	e_objAttachDirection_TOP_CENTER,
 	e_objAttachDirection_RIGHT_CENTER,
 	e_objAttachDirection_BOTTOM_CENTER,
-	e_objAttachDirection_ROTATE_SLIDEBAR_REGION
+	e_objAttachDirection_ROTATE_SLIDEBAR_REGION,
+
+	// Patchers IO
+	e_objAttachDirection_PATCHERS_IO_INPUT,
+	e_objAttachDirection_PATCHERS_IO_OUTPUT
 } e_ObjAttachDirection_t;
 
 // Popup Menu
@@ -273,7 +277,7 @@ typedef enum _e_popupMenu_t {
 // Screenshot
 typedef enum _e_takeScreenshot_t {
 	e_takeScreenshot_PNG = 0,
-	e_takeScreenshot_JPEG,
+	e_takeScreenshot_JPEG
 } e_takeScreenshot_t;
 
 #ifdef __cplusplus
@@ -285,6 +289,7 @@ typedef enum _e_takeScreenshot_t {
 
 //! Prototype
 // ---------------------------------------------------------------
+/*
 namespace g_Func {
 	#define TAG__g_Func		"g_Func"
 } // namespace g_Func
@@ -295,6 +300,7 @@ namespace g_FuncSignalHandler {
 	// Menu Item: Button
 	//void on_button_open_clicked(GtkWidget* widget, gpointer user_data);
 } // namespace g_FuncSignalHandler
+*/
 
 // ---------------------------------------------------------------
 
@@ -336,6 +342,8 @@ public:
 
 	// ---------------------------------------------------------------
 	
+	const CBaseView* get_base_view(void) { return this; }
+
 	virtual void set_canvas(canvas_t* canvas);
 	virtual void set_canvas_ref(canvas_t*& canvas);
 	virtual canvas_t* get_canvas(void) { return m_canvas; }

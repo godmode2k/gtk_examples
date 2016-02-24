@@ -5,7 +5,7 @@
 #
 # Author: Ho-Jung Kim (godmode2k@hotmail.com)
 # Date: Since June 29, 2012
-# Last modified: May 28, 2015
+# Last modified: Jan 20, 2015
 #
 
 
@@ -18,8 +18,7 @@ BIN_CC=/usr/bin/g++
 # USE GTK+ 2.x
 ##gmodule-2.0
 OPT_GTK2="-D__GTKv2__"
-#OPT_LIB="`pkg-config --cflags --libs gtk+-2.0 libglade-2.0 --libs gthread-2.0` $OPT_GTK2"
-OPT_LIB="`pkg-config --cflags --libs gtk+-2.0 libglade-2.0 --libs` $OPT_GTK2"
+OPT_LIB="`pkg-config --cflags --libs gtk+-2.0 libglade-2.0` $OPT_GTK2"
 #
 # USE GTK+ 3.x
 #OPT_GTK3="-D__GTKv3__"
@@ -27,6 +26,48 @@ OPT_LIB="`pkg-config --cflags --libs gtk+-2.0 libglade-2.0 --libs` $OPT_GTK2"
 ##GTKFLAGS="-Wl,-export-dynamic"
 #GTKFLAGS="-DGTK_DISABLE_SINGLE_INCLUDES"
 #GTKFLAGS="-DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED"
+#
+# WIN32
+OPT_LIB_WIN32_GTK="../../libs_win32/gtk+-bundle"
+OPT_LIB_WIN32_GLADE="../../libs_win32/libglade-2.4.0-dev"
+OPT_LIB="$OPT_GTK2	\
+	-I$OPT_LIB_WIN32_GTK/include				\
+	-I$OPT_LIB_WIN32_GTK/include/cairo			\
+	-I$OPT_LIB_WIN32_GTK/include/fontconfig		\
+	-I$OPT_LIB_WIN32_GTK/include/freetype2		\
+	-I$OPT_LIB_WIN32_GTK/include/gail-1.0		\
+	-I$OPT_LIB_WIN32_GTK/include/gdk-pixbuf-2.0	\
+	-I$OPT_LIB_WIN32_GTK/include/gio-win32-2.0	\
+	-I$OPT_LIB_WIN32_GTK/include/glib-2.0		\
+	-I$OPT_LIB_WIN32_GTK/lib/glib-2.0/include	\
+	-I$OPT_LIB_WIN32_GTK/include/gtk-2.0		\
+	-I$OPT_LIB_WIN32_GTK/lib/gtk-2.0/include	\
+	-I$OPT_LIB_WIN32_GTK/include/libpng14		\
+	-I$OPT_LIB_WIN32_GTK/include/pango-1.0		\
+	-I$OPT_LIB_WIN32_GTK/include/pixman-1		\
+	-I$OPT_LIB_WIN32_GTK/include/atk-1.0		\
+	-L$OPT_LIB_WIN32_GTK/lib					\
+	-lgtk-win32-2.0		\
+	-lgdk-win32-2.0		\
+	-latk-1.0			\
+	-lgdk_pixbuf-2.0	\
+	-lcairo				\
+	-lpangowin32-1.0	\
+	-lpango-1.0			\
+	-lpangocairo-1.0	\
+	-lgobject-2.0		\
+	-lgmodule-2.0		\
+	-lglib-2.0			\
+	-lfreetype			\
+	-lgio-2.0			\
+	-lz					\
+	-liconv				\
+	-lm					\
+	-I$OPT_LIB_WIN32_GLADE/include/libglade-2.0	\
+	-L$OPT_LIB_WIN32_GLADE/lib					\
+	-lglade-2.0			\
+	-mms-bitfields		\
+"
 #
 #
 # OpenGL
@@ -75,7 +116,9 @@ SRC_IN_LIB="$SRC_IN_LIB_CUTIL_PATH/CUtil.cpp	\
 	./CViewAttach.cpp	\
 	./_CViewSlideWindow.cpp	\
 "
-SRC_IN_LIB_PATH_ALL="-I../libs	\
+SRC_IN_LIB_PATH_ALL="-I./	\
+	-I../libs	\
+	-L../../result/bin	\
 "
 OPT_LIBS_PTHREAD="-D_REENTRANT -lpthread"
 OPT_LIBS_TIME="-lrt"
@@ -107,15 +150,20 @@ echo "-------------------------"
 #
 #
 # C++11
-#OPT_CPP11="-std=gnu++0x"
-OPT_CPP11="-std=c++0x"
+OPT_CPP11="-std=gnu++0x"
+#OPT_CPP11="-std=c++0x"
 #OPT_CPP11="-std=c++11"
 OPT_LIBS_ALL="-D__LINUX__	\
+	-D__WIN32_CYGWIN__	\
 	-D__DEBUG_MODE__ \
 	$SRC_IN_LIB_PATH_ALL $OPT_LIBS	\
 	$OPT_LIB_GL $OPT_LIB_GTKGL		\
 	$OPT_CPP11	\
 "
+echo "-------------------------"
+echo '=== [C++11] ==='
+echo $OPT_CPP11
+echo "-------------------------"
 
 
 # Final OPT

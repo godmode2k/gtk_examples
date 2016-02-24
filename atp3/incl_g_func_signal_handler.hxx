@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	incl_g_func_signal_handler.hxx
 
-Last modified: Feb 2, 2015
+Last modified: Jun 29, 2015
 License:
 
 *
@@ -63,13 +63,20 @@ extern "C" {
 namespace g_FuncSignalHandler {
 	#define TAG__g_FuncSignalHandler		"g_FuncSignalHandler"
 
+	// Gtk Window Quit
+	void main_window_quit(GtkWidget* widget, gpointer user_data);
+
 	//GtkFixed Resizing
 	void on_event_gtkfixed_size_allocate(GtkWidget* widget, GdkRectangle* allocation, gpointer user_data);
 
 
 	// Menu Item: Button
 	// ---------------------------------------------------------------
+	// Menu button
 	void on_menu_button_open_clicked(GtkWidget* widget, gpointer user_data);
+	void on_menu_button_test_anim_clicked(GtkWidget* widget, gpointer user_data);
+	void on_menu_button_test_show_patchers_io_clicked(GtkWidget* widget, gpointer user_data);
+	// Toolbar
 	void on_toolbar_button_update_clicked(GtkWidget* widget, gpointer user_data);
 	void on_toolbar_button_toastmsg_clicked(GtkWidget* widget, gpointer user_data);
 	void on_toolbar_button_add_img_clicked(GtkWidget* widget, gpointer user_data);
@@ -104,6 +111,13 @@ namespace g_FuncSignalHandler {
 	void on_event_key_press(GtkWidget* widget, GdkEvent* event, gpointer user_data);
 	void on_event_key_release(GtkWidget* widget, GdkEvent* event, gpointer user_data);
 	void on_event_mouse(GtkWidget* widget, GdkEvent* event, gpointer user_data);
+
+
+	///*
+	// Timer for redraw
+	// ---------------------------------------------------------------
+	bool on_event_timer_redraw_handler(GtkWidget* widget);
+	//*/
 
 
 	// onDraw()

@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CBaseView.cpp
 
-Last modified: Feb 2, 2015
+Last modified: May 29, 2015
 License:
 
 *
@@ -91,34 +91,6 @@ void CBaseView::__release(void) {
 	//g_slice_free( Widgets_st, m_pWidgets );
 }
 
-#if 0
-// Initialize Widget structure
-bool CBaseView::init_widget_all(Widgets_st** pWidgets) {
-	__LOGT__( TAG, "init_widget_all()" );
-
-	(*pWidgets) = g_slice_new( Widgets_st );
-
-	if ( pWidgets == NULL )
-		return false;
-	/*
-	// ...
-	if ( (*pWidgets)->pWindow == NULL )
-		return false;
-
-	(*pWidgets)->pWindow = NULL;
-	*/
-
-	return true;
-}
-
-// Initialize
-bool CBaseView::init_ui_with_callback(void) {
-	__LOGT__( TAG, "init_ui_with_callback()" );
-
-	return true;
-}
-#endif
-
 
 
 // ---------------------------------------------------------------
@@ -183,12 +155,22 @@ void CBaseView::_invalidate(void) {
 
 	// invoke draw()
 	//  - v2.x: "expose-event"
-	//  - v3.x "draw"
+	//  - v3.x: "draw"
 	{
 		if ( !GTK_IS_WIDGET(m_drawing_area) )
 			__LOGT__( TAG, "_invalidate(): DrawingArea == widget [FALSE]" );
 
+		// NOTE:
+		// - gdk_window_progress_updates( GdkWindow* window, qboolean update_children );
+		// - gtk_widget_queue_draw_area( m_drawing_area, x, y, w, h);
+		//
+		//gdk_threads_enter();
+		//...
+		//gdk_threads_leave();
+		//gdk_flush();
+
 		gtk_widget_queue_draw( m_drawing_area );
+
 		return;
 	}
 	
@@ -519,11 +501,6 @@ void CBaseView::draw_circle(canvas_t* canvas, float x, float y, double radius, b
 //! Implementation
 // ---------------------------------------------------------------
 // Global variable
-
-namespace g_Func {
-} // namespace g_Func
-
-namespace g_FuncSignalHandler {
-} // namespace g_FuncSignalHandler
+//
 // ---------------------------------------------------------------
 

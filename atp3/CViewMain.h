@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CViewMain.h
 
-Last modified: Feb 7, 2015
+Last modified: Feb 1, 2016
 License:
 
 *
@@ -76,6 +76,7 @@ Note:
 // View
 #include "CBaseView.h"
 #include "CViewAttach.h"
+#include "_CViewSlideWindow.h"
 
 // Keyboard & Mouse Event
 #include "CKeyEvent.h"
@@ -135,6 +136,7 @@ typedef struct _tmp_obj_bg_img_info_st {
 
 //! Prototype
 // ---------------------------------------------------------------
+/*
 namespace g_Func {
 	#define TAG__g_Func		"g_Func"
 } // namespace g_Func
@@ -145,6 +147,7 @@ namespace g_FuncSignalHandler {
 	// Menu Item: Button
 	//void on_button_open_clicked(GtkWidget* widget, gpointer user_data);
 } // namespace g_FuncSignalHandler
+*/
 
 // ---------------------------------------------------------------
 
@@ -184,6 +187,7 @@ private:
 	std::vector<obj_rect_list_st> m_vec_rect;
 	std::vector<CViewAttach*>* m_pvec_attach;
 
+
 	// Attachment Object Action
 	e_attachActionType_t m_attach_action;
 
@@ -198,7 +202,14 @@ private:
 	e_ObjAttachDirection_t m_screenshot_direction;
 	char m_screenshot_pathname[TAKE_SCREENSHOT__PATHNAME_MAX_SIZE];
 
+
+
+	//! TEST
 	//CViewAttach m_attach;		//! TEST
+	CViewSlideWindow* m_pCViewSlideWindow;
+	bool m_attach_animstask_update;
+	bool m_attach_text_boundary_show;
+	bool m_attach_patchers_io_show;
 protected:
 public:
 	// Ctor/Dtor
@@ -314,6 +325,21 @@ public:
 	bool attach_invalidate(CBaseView* view);
 	bool attach_touch_event(CKeyEvent* event);
 	void attach_bring_to_front(void);
+
+	// Attachment: Animation Task
+	//! TODO: Needs container
+	void attach_animstask(CBaseView* view);
+	void attach_animstask_show_slide_window(bool show);
+	void set_attach_animstask_update(bool val) { m_attach_animstask_update = val; }
+	bool get_attach_animstask_update(void) { return m_attach_animstask_update; }
+	bool get_attach_animstask_done(void);
+
+	void attach_text_boundary_show(void);
+	bool attach_text_boundary_get_show(void) { return m_attach_text_boundary_show; }
+
+	// Patchers IO
+	void attach_patchers_io_show(void);
+	bool attach_patchers_io_get_show(void) { return m_attach_patchers_io_show; }
 private:
 	// Draw
 	virtual void onDraw(CBaseView* view);

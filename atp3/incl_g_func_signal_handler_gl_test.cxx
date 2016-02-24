@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	incl_g_func_signal_handler.cxx
 
-Last modified: Feb 1, 2016
+Last modified: Feb 7, 2015
 License:
 
 *
@@ -67,21 +67,6 @@ TODO:
 // ---------------------------------------------------------------
 
 namespace g_FuncSignalHandler {
-	// Gtk Window Quit
-	void main_window_quit(GtkWidget* widget, gpointer user_data) {
-		__LOGT__( TAG__g_FuncSignalHandler, "main_window_quit()" );
-
-		// Global instance
-		if ( g_pCAtp3 ) {
-			delete g_pCAtp3;
-			g_pCAtp3 = NULL;
-		}
-
-
-		// Finish Application
-		gtk_main_quit();
-	}
-
 	//GtkFixed Resizing
 	void on_event_gtkfixed_size_allocate(GtkWidget* widget, GdkRectangle* allocation, gpointer user_data) {
 		//__LOGT__( TAG__g_FuncSignalHandler, "on_event_gtkfixed_size_allocate()" );
@@ -171,42 +156,6 @@ namespace g_FuncSignalHandler {
 		}
 	}
 
-	// MenuItem: Button: Test->anim
-	void on_menu_button_test_anim_clicked(GtkWidget* widget, gpointer user_data) {
-		//__LOGT__( TAG__g_FuncSignalHandler, "on_menu_button_test_anim_clicked()" );
-
-		if ( !widget || !user_data ) return;
-
-		{
-			if ( g_pCAtp3 ) {
-				CViewMain* view = g_pCAtp3->get_view_main();
-
-				if ( view ) {
-					view->attach_animstask_show_slide_window( true );
-					view->invalidate();
-				}
-			}
-		}
-	}
-
-	// MenuItem: Button: Test->Show PatchersIO
-	void on_menu_button_test_show_patchers_io_clicked(GtkWidget* widget, gpointer user_data) {
-		//__LOGT__( TAG__g_FuncSignalHandler, "on_menu_button_test_anim_clicked()" );
-
-		if ( !widget || !user_data ) return;
-
-		{
-			if ( g_pCAtp3 ) {
-				CViewMain* view = g_pCAtp3->get_view_main();
-
-				if ( view ) {
-					view->attach_patchers_io_show();
-					view->invalidate();
-				}
-			}
-		}
-	}
-
 	// Toolbar Button: Update
 	void on_toolbar_button_update_clicked(GtkWidget* widget, gpointer user_data) {
 		//__LOGT__( TAG__g_FuncSignalHandler, "on_toolbar_button_update_clicked()" );
@@ -235,7 +184,7 @@ namespace g_FuncSignalHandler {
 			const char msg[] = "hehe\nhahaha, hello toast message dialog test...";
 			// perform the task: SEE 'CToastMessageDlg::task_in_thread()'
 			g_toastMsgDlg.show( (GtkWindow*)((Widgets_st*)user_data)->pWindow, NULL,
-					msg, e_toastMsgShowDelay_SHORT, e_toastMsgShowPos_CENTER );
+					msg, e_toastMsgShowDelay_SHORT, e_toastMsgShowDelay_CENTER );
 			//
 			// Don't use the following instance for local scope.
 			// This isn't used gtk_dialog_run(), use this for global scope.
@@ -445,22 +394,22 @@ namespace g_FuncSignalHandler {
 							if ( msg_pathname ) {
 								snprintf( msg_pathname, len, "Saved: %s", pathname );
 								g_toastMsgDlg.show( (GtkWindow*)((Widgets_st*)user_data)->pWindow, NULL,
-										msg_pathname, e_toastMsgShowDelay_SHORT, e_toastMsgShowPos_CENTER );
+										msg_pathname, e_toastMsgShowDelay_SHORT, e_toastMsgShowDelay_CENTER );
 							}
 							else {
 								g_toastMsgDlg.show( (GtkWindow*)((Widgets_st*)user_data)->pWindow, NULL,
-										msg_success, e_toastMsgShowDelay_SHORT, e_toastMsgShowPos_CENTER );
+										msg_success, e_toastMsgShowDelay_SHORT, e_toastMsgShowDelay_CENTER );
 							}
 						}
 						else {
 							g_toastMsgDlg.show( (GtkWindow*)((Widgets_st*)user_data)->pWindow, NULL,
-									msg_success, e_toastMsgShowDelay_SHORT, e_toastMsgShowPos_CENTER );
+									msg_success, e_toastMsgShowDelay_SHORT, e_toastMsgShowDelay_CENTER );
 						}
 					}
 					else {
 							const char msg_fail[] = "Saved [FALSE]";
 							g_toastMsgDlg.show( (GtkWindow*)((Widgets_st*)user_data)->pWindow, NULL,
-									msg_fail, e_toastMsgShowDelay_SHORT, e_toastMsgShowPos_CENTER );
+									msg_fail, e_toastMsgShowDelay_SHORT, e_toastMsgShowDelay_CENTER );
 					}
 				}
 			}
@@ -1320,35 +1269,6 @@ namespace g_FuncSignalHandler {
 	// ---------------------------------------------------------------
 
 
-	///*
-	// Timer for redraw
-	// ---------------------------------------------------------------
-	bool on_event_timer_redraw_handler(GtkWidget* widget) {
-		//__LOGT__( TAG__g_FuncSignalHandler, "on_event_timer_redraw_handler()" );
-
-		//if ( !widget ) return false;
-
-		if ( g_pCAtp3 ) {
-			CViewMain* view = g_pCAtp3->get_view_main();
-
-			if ( view ) {
-				if ( view->get_attach_animstask_done() )
-					return true;
-
-				if ( view->get_attach_animstask_update() ) {
-					view->invalidate();
-				}
-			}
-		}
-
-		return true;
-	}
-	//*/
-
-
-	// ---------------------------------------------------------------
-
-
 	// onDraw()
 	// ---------------------------------------------------------------
 	/*
@@ -1477,7 +1397,91 @@ namespace g_FuncSignalHandler {
 
 		GtkAllocation windowSize;
 		cairo_t* cr = NULL;
+		cairo_surface_t* cr_surface = NULL;
 		bool rgba = true;
+
+		// OpenGL
+		//GdkGLWindow* gl_window = gdk_window_get_gl_window( widget->window );
+		//GdkGLDrawable* gl_drawable = NULL;
+		GdkGLContext* gl_context = gtk_widget_get_gl_context( widget );
+		GdkGLDrawable* gl_drawable = gtk_widget_get_gl_drawable( widget );
+		bool gl_begin = false;
+
+
+		windowSize.width = 0;
+		windowSize.height = 0;
+		gtk_widget_get_allocation( widget, &windowSize );
+
+
+//#if 0
+		// OpenGL
+		{
+			if ( !gl_context ) {
+				__LOGT__( TAG__g_FuncSignalHandler, "on_event_draw_main(): GdkGLContext == NULL" );
+				return false;
+			}
+
+			/*
+			if ( gl_window ) {
+				gl_drawable = GDK_GL_DRAWABLE( gl_window );
+			}
+			else {
+				__LOGT__( TAG__g_FuncSignalHandler, "on_event_draw_main(): GdkGLWindow == NULL" );
+			}
+			*/
+
+			{
+				if ( gl_drawable ) {
+					gl_begin = gdk_gl_drawable_gl_begin( gl_drawable, gl_context );
+					if ( !gl_begin ) {
+						__LOGT__( TAG__g_FuncSignalHandler, "on_event_draw_main(): gl begin [FALSE]" );
+						return false;
+					}
+
+					/*
+					if ( gdk_gl_drawable_is_double_buffered(gl_drawable) ) {
+						gdk_gl_drawable_swap_buffers( gl_drawable );
+					}
+					else {
+						__LOGT__( TAG__g_FuncSignalHandler, "on_event_draw_main(): double-buffered [FALSE]" );
+						glFlush();
+					}
+
+					gdk_gl_drawable_gl_end( gl_drawable );
+					*/
+
+					{
+						glClearColor( 255.0f, 255.0f, 255.0f, 0.0f );
+						glClear( GL_COLOR_BUFFER_BIT );
+						glPushMatrix();
+						glShadeModel( GL_FLAT );
+
+						glBegin( GL_LINES );
+						glColor3f( 1.0f, 0.0f, 0.0f );
+						glVertex3f( 0.0f, 0.0f, 0.0f );
+						glVertex3f( 10.0f, 0.0f, 0.0f );
+						glEnd();
+
+						glPopMatrix();
+						//glXSwapBuffers( g_pCAtp3->x_display, g_pCAtp3->x_window );
+					}
+				}
+				else {
+					__LOGT__( TAG__g_FuncSignalHandler, "on_event_draw_main(): GdkGLDrawable == NULL" );
+					return false;
+				}
+			}
+			//glXSwapBuffers( g_pCAtp3->x_display, g_pCAtp3->x_window );
+		}
+		/*
+		{
+		//	__LOGT__( TAG__g_FuncSignalHandler, "on_event_draw_main(): gl clear" );
+		//	//glClearColor( 255.0f, 255.0f, 255.0f, 0.0f );
+		//	//glClear( GL_COLOR_BUFFER_BIT );
+			glXSwapBuffers( g_pCAtp3->x_display, g_pCAtp3->x_window );
+		}
+		*/
+//#endif
 
 
 		// Cairo
@@ -1486,7 +1490,14 @@ namespace g_FuncSignalHandler {
 				cairo_destroy( ((Widgets_st*)user_data)->pCanvas );
 				((Widgets_st*)user_data)->pCanvas = NULL;
 			}
-			((Widgets_st*)user_data)->pCanvas = gdk_cairo_create( widget->window );
+			//((Widgets_st*)user_data)->pCanvas = gdk_cairo_create( widget->window );
+			//
+			cr_surface = cairo_image_surface_create( CAIRO_FORMAT_ARGB32, windowSize.width, windowSize.height );
+			if ( !cr_surface ) {
+				__LOGT__( TAG__g_FuncSignalHandler, "on_event_draw_main(): Canvas surface == NULL" );
+				return false;
+			}
+			((Widgets_st*)user_data)->pCanvas = cairo_create( cr_surface );
 
 			cr = ((Widgets_st*)user_data)->pCanvas;
 			if ( cr == NULL ) {
@@ -1511,9 +1522,9 @@ namespace g_FuncSignalHandler {
 		}
 
 
-		windowSize.width = 0;
-		windowSize.height = 0;
-		gtk_widget_get_allocation( widget, &windowSize );
+		//windowSize.width = 0;
+		//windowSize.height = 0;
+		//gtk_widget_get_allocation( widget, &windowSize );
 
 		if ( g_pCAtp3 ) {
 			CViewMain* view = g_pCAtp3->get_view_main();
@@ -1530,14 +1541,96 @@ namespace g_FuncSignalHandler {
 				//__LOGT__( TAG__g_FuncSignalHandler, "on_event_draw_main(): w = %d, h = %d",
 				//			windowSize.width, windowSize.height );
 
-				//__LOGT__( TAG__g_FuncSignalHandler, "on_event_draw_main(): Now drawing..." );
+
 				view->_draw();
+
+
+//#if 0
+				// OpenGL
+				{
+					if ( gl_drawable ) {
+						{
+							const int channel = 4;
+							//const int texture_size  = (channel * windowSize.width * windowSize.height);
+
+							//if ( g_pCAtp3->m_texture_data ) {
+							//	delete g_pCAtp3->m_texture_data;
+							//	g_pCAtp3->m_texture_data = NULL;
+							//}
+
+							//g_pCAtp3->m_texture_data = new unsigned char[texture_size];
+							//if ( g_pCAtp3->m_texture_data ) {
+							{
+								printf( "cairo_get_target()\n" );
+								//cairo_surface_t* cr_surface = cairo_get_target( ((Widgets_st*)user_data)->pCanvas );
+
+								if ( cr_surface ) {
+									/*
+									cairo_surface_t* surface = 
+									cairo_image_surface_create_for_data( g_pCAtp3->m_texture_data,
+																			CAIRO_FORMAT_ARGB32,
+																			windowSize.width, windowSize.height,
+																			(channel * windowSize.width) );
+									*/
+									g_pCAtp3->m_texture_data = cairo_image_surface_get_data( cr_surface );
+									if ( g_pCAtp3->m_texture_data ) {
+										//glBindTexture( GL_TEXTURE_RECTANGLE_ARB, g_pCAtp3->m_texture_id );
+										glBindTexture( GL_TEXTURE_2D, g_pCAtp3->m_texture_id );
+										glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+										glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+										//glTexImage2D( GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGBA,
+										glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA,
+														windowSize.width, windowSize.height, 0,
+														GL_BGRA, GL_UNSIGNED_BYTE, g_pCAtp3->m_texture_data );
+
+										/*
+										glMatrixMode( GL_MODELVIEW );
+										glLoadIdentity();
+										glClear( GL_COLOR_BUFFER_BIT );
+										glPushMatrix();
+
+										glBindTexture( GL_TEXTURE_2D, g_pCAtp3->m_texture_id );
+										glBegin( GL_QUADS );
+										// ...
+										glEnd();
+
+										glPopMatrix();
+										*/
+									}
+								}
+							}
+						}
+
+						if ( gdk_gl_drawable_is_double_buffered(gl_drawable) ) {
+							gdk_gl_drawable_swap_buffers( gl_drawable );
+						}
+						else {
+							__LOGT__( TAG__g_FuncSignalHandler, "on_event_draw_main(): double-buffered [FALSE]" );
+							glFlush();
+						}
+						//glXSwapBuffers( g_pCAtp3->x_display, g_pCAtp3->x_window );
+
+						gdk_gl_drawable_gl_end( gl_drawable );
+						__LOGT__( TAG__g_FuncSignalHandler, "on_event_draw_main(): updated" );
+					}
+					else {
+						__LOGT__( TAG__g_FuncSignalHandler, "on_event_draw_main(): GdkGLDrawable == NULL" );
+					}
+
+					glXSwapBuffers( g_pCAtp3->x_display, g_pCAtp3->x_window );
+
+					if ( g_pCAtp3->m_texture_data ) {
+						delete g_pCAtp3->m_texture_data;
+						g_pCAtp3->m_texture_data = NULL;
+					}
+				} // OpenGL
+//#endif
 			}
 		}
 
 
 		//cairo_destroy( cr );
-	
+
 
 		return false;
 	}

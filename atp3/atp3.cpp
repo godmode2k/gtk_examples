@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	atp3.cpp
 
-Last modified: Feb 2, 2015
+Last modified: Jun 29, 2015
 License:
 
 *
@@ -90,6 +90,10 @@ void CAtp3::__init(void) {
 
 	// Popup Menu
 	m_show_popup_menu = false;
+
+
+	// Timer Handler
+	//m_pHandler_redraw = new CTimerHandler;
 }
 
 // Release
@@ -105,10 +109,21 @@ void CAtp3::__release(void) {
 
 	g_slice_free( Widgets_st, m_pWidgets );
 
+
+	// Main View
 	if ( m_pCViewMain ) {
 		delete m_pCViewMain;
 		 m_pCViewMain = NULL;
 	}
+
+	/*
+	// Timer Handler
+	if ( m_pHandler_redraw ) {
+		m_pHandler_redraw->cancel();
+		delete m_pHandler_redraw;
+		m_pHandler_redraw = NULL;
+	}
+	*/
 }
 
 // Initialize Widget structure
@@ -157,6 +172,13 @@ bool CAtp3::init_ui_with_callback(void) {
 		return false;
 	}
 
+	/*
+	if ( !m_pHandler_redraw ) {
+		__LOGT__( TAG, "init_ui_with_callback(): Timer Handler == NULL" );
+		return false;
+	}
+	*/
+
 	__LOGT__( TAG, "init_ui_with_callback(): INIT [OK]" );
 
 
@@ -180,27 +202,32 @@ bool CAtp3::init_ui_with_callback(void) {
 
 
 	// Main Toplevel Window
+	// ---------------------------------------------------------------
 	//pWidgets->pWindow = glade_xml_get_widget( pGladeXml, "window1" );
 	m_pWidgets->pWindow = GTK_WIDGET( gtk_builder_get_object(m_pGladeXml, "window1") );
 	g_signal_connect( G_OBJECT(m_pWidgets->pWindow), "destroy",
-					G_CALLBACK(g_Func::main_window_quit), NULL );
+					G_CALLBACK(g_FuncSignalHandler::main_window_quit), NULL );
 	//g_signal_connect( G_OBJECT(m_pWidgets->pWindow), "expose-event",
 	//				G_CALLBACK(g_FuncSignalHandler::on_event_draw_top_window), m_pWidgets );
 
 	//gtk_widget_set_app_paintable( m_pWidgets->pWindow, true );
+	//gtk_container_set_reallocate_redraws( GTK_CONTAINER(m_pWidgets->pWindow), true );
 
 
 
 	// Container
+	// ---------------------------------------------------------------
 	m_pWidgets->pTopContainer = GTK_WIDGET( gtk_builder_get_object(m_pGladeXml, "vbox1") );
 	m_pWidgets->pContainerScrolledWindow =
 				GTK_WIDGET( gtk_builder_get_object(m_pGladeXml, "scrolledwindow1") );
 
 
+	// Menu
+	// ---------------------------------------------------------------
 	// Menu: File->Quit
 	m_pWidgets->pMenuItem = GTK_WIDGET( gtk_builder_get_object(m_pGladeXml, "imagemenuitem5") );
 	g_signal_connect( G_OBJECT(m_pWidgets->pMenuItem), "activate",
-					G_CALLBACK(g_Func::main_window_quit), NULL );
+					G_CALLBACK(g_FuncSignalHandler::main_window_quit), NULL );
 
 
 	// Menu: File->Open
@@ -208,7 +235,19 @@ bool CAtp3::init_ui_with_callback(void) {
 	g_signal_connect( G_OBJECT(m_pWidgets->pMenuItem), "activate",
 					G_CALLBACK(g_FuncSignalHandler::on_menu_button_open_clicked), m_pWidgets );
 
+	// Menu: Test->anim
+	m_pWidgets->pMenuItem = GTK_WIDGET( gtk_builder_get_object(m_pGladeXml, "menuitem_test__anim") );
+	g_signal_connect( G_OBJECT(m_pWidgets->pMenuItem), "activate",
+					G_CALLBACK(g_FuncSignalHandler::on_menu_button_test_anim_clicked), m_pWidgets );
 
+	// Menu: Test->Show PatchersIO
+	m_pWidgets->pMenuItem = GTK_WIDGET( gtk_builder_get_object(m_pGladeXml, "menuitem_test__show_patchers_io") );
+	g_signal_connect( G_OBJECT(m_pWidgets->pMenuItem), "activate",
+					G_CALLBACK(g_FuncSignalHandler::on_menu_button_test_show_patchers_io_clicked), m_pWidgets );
+
+
+	// Toolbar
+	// ---------------------------------------------------------------
 	// Toolbar Button: Update
 	m_pWidgets->pToolbarButton =
 					GTK_WIDGET( gtk_builder_get_object(m_pGladeXml, "Toolbutton_Update") );
@@ -261,6 +300,7 @@ bool CAtp3::init_ui_with_callback(void) {
 
 
 	// TreeView
+	// ---------------------------------------------------------------
 	//m_pWidgets->pTreeViewCtrl = (GtkTreeView*)gtk_builder_get_object( m_pGladeXml, "treeview1" );
 	//g_signal_connect( G_OBJECT(m_pWidgets->pTreeViewCtrl), "clicked",
 	//				G_CALLBACK(g_FuncSignalHandler::on_button_open_clicked), m_pWidgets );
@@ -268,6 +308,7 @@ bool CAtp3::init_ui_with_callback(void) {
 	
 
 	// DrawingArea
+	// ---------------------------------------------------------------
 	//m_pWidgets->pDrawingArea = (GtkDrawingArea*)gtk_builder_get_object( m_pGladeXml, "DrawingArea" );
 	m_pWidgets->pDrawingArea = GTK_WIDGET( gtk_builder_get_object(m_pGladeXml, "DrawingArea") );
 #ifdef __GTKv2__
@@ -280,6 +321,17 @@ bool CAtp3::init_ui_with_callback(void) {
 					G_CALLBACK(g_FuncSignalHandler::on_event_draw_main), m_pWidgets );
 	g_signal_connect( G_OBJECT(m_pWidgets->pDrawingArea), "size-allocate",
 					G_CALLBACK(g_FuncSignalHandler::on_event_gtkfixed_size_allocate), NULL );
+
+
+	///*
+	// Timer for redraw
+	// ---------------------------------------------------------------
+	g_timeout_add( ATTACH_ANIMTASK_TIMER_CB_TIME,
+					(GSourceFunc)g_FuncSignalHandler::on_event_timer_redraw_handler,
+					(gpointer)NULL );
+	//*/
+	// Thread
+	//m_pHandler_redraw->run( this );
 
 
 
@@ -301,6 +353,7 @@ bool CAtp3::init_ui_with_callback(void) {
 					G_CALLBACK(g_FuncSignalHandler::on_event_mouse), m_pWidgets );
 	// Set events
 	//gtk_widget_set_events( m_pWidgets->pViewport, GDK_POINTER_MOTION_HINT_MASK
+	//gtk_widget_set_events( m_pWidgets->pDrawingArea, (GdkEventMask)GDK_POINTER_MOTION_HINT_MASK
 	gtk_widget_set_events( m_pWidgets->pDrawingArea, GDK_POINTER_MOTION_HINT_MASK
 			| GDK_POINTER_MOTION_MASK
 			| GDK_LEAVE_NOTIFY_MASK
@@ -313,8 +366,6 @@ bool CAtp3::init_ui_with_callback(void) {
 			| GDK_BUTTON_PRESS_MASK
 			| GDK_BUTTON_RELEASE_MASK
 	);
-
-
 
 
 
@@ -416,6 +467,7 @@ bool CAtp3::is_show_popup_menu(void) {
 // g_Func and g_FuncSignalHandler
 #include "incl_g_func.cxx"
 #include "incl_g_func_signal_handler.cxx"
+#include "incl_timer_handler.cxx"
 
 // class CProgressdlg
 #include "incl_progress_dlg.cxx"
@@ -518,7 +570,7 @@ void CAsyncTask::postExecute(void* pResult, void* pExtraVal) {
 //! Main
 // ---------------------------------------------------------------
 int main(int argc, char* argv[]) {
-	__LOGT__( "ATP3", "main()" );
+	__LOGT__( TAG_MAIN, "main()" );
 
 #ifdef __LINUX__
 	/*
@@ -545,7 +597,10 @@ int main(int argc, char* argv[]) {
 
 	//! X11 Thread
 	// ---------------------------------------------------------------
+#ifdef __WIN32_CYGWIN__
+#else
 	XInitThreads();
+#endif
 #elif _WINDOWS
 #else
 #endif
@@ -554,7 +609,20 @@ int main(int argc, char* argv[]) {
 
 	//! GTK Init
 	// ---------------------------------------------------------------
+	/*
+	{
+		if ( !g_thread_supported() ) {
+			__LOGT__( TAG_MAIN, "main(): thread supported = FALSE" );
+			g_thread_init( NULL );
+		}
+		gdk_threads_init();
+		//gdk_threads_enter();
+		//gdk_threads_leave();
+	}
+	gdk_threads_enter();
+	*/
 	gtk_init( &argc, &argv );
+	
 
 
 	/*
@@ -605,9 +673,12 @@ int main(int argc, char* argv[]) {
 
 
 
+
+
 	//! Start Application
 	// ---------------------------------------------------------------
 	gtk_main();
+	//gdk_threads_leave();
 
 
 
