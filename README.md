@@ -48,9 +48,11 @@ Build
 	  - CNetSockLib.cpp        // Network Class
 	  -
 	  - CDialog.cpp            // Gtk+ Widget Dialog Class (Custom)
-	  - CThreadTask.cpp        // PThread Class, like AsyncTask method in Android
+	  - CThreadTask.cpp        // POSIX Threads (Pthreads) Class, like AsyncTask method in Android
 	  - CProgressDlg.cpp       // Progress Dialog Class
 	  - CToastMsgDlg.cpp       // Message Dialog Class, like Toast method in Android
+      - CAnimTask.cpp          // Custom Animation Class
+      - CTimerHandlerTask.cpp  // Timer Handler Class
 	  -
 	  - CUtil.cpp              // Useful system functions (utility)
 
@@ -101,5 +103,9 @@ Screenshots
 > Rotation
 
 ![alt tag](https://github.com/godmode2k/gtk_examples/raw/master/screenshots/screenshot_10.png)
+
+> Patchers
+
+![alt tag](https://github.com/godmode2k/gtk_examples/raw/master/screenshots/screenshot_11.png)
 
 
