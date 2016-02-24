@@ -38,8 +38,9 @@ Build
 	 - incl_progress_dlg.cxx             // Progress Dialog Implements
 	 - incl_toastmsg_dlg.cxx             // Toast Message Dialog Implements
      -
-     - _CViewSlideWindow.cpp             // Custom Animation test: slide
-     - _incl_slidewindow_anim.cxx        // Custom Animation test: handler
+     - _CViewSlideWindow.cpp             // Custom Animation test
+     - _incl_slidewindow_anim.cxx        // Custom Animation test
+     - incl_timer_handler.cxx            // Timer Handler test
 	 -
 	 - ui_gtk2.glade           // Glade UI(XML) for GTK+2.x
 	 - ui_gtk3.glade           // Glade UI(XML) for GTK+3.x
