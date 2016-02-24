@@ -108,7 +108,7 @@ Screenshots
 
 ![alt tag](https://github.com/godmode2k/gtk_examples/raw/master/screenshots/screenshot_10.png)
 
-> Patchers
+> Patchers IO
 
 ![alt tag](https://github.com/godmode2k/gtk_examples/raw/master/screenshots/screenshot_11.png)
 
