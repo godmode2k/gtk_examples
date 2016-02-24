@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Nov 28, 2014
 Filename:	CToastMsgDlg.cpp
 
-Last modified: Jan 22, 2015
+Last modified: May 28, 2015
 License:
 
 *
@@ -195,7 +195,7 @@ bool CToastMsgDlg::show(GtkWindow* pWindow, gpointer user_data,
 	//__LOGT__( TAG, "show()" );
 
 	if ( get_working() ) {
-		__LOGT__( TAG, "show(): working... SKIP" );
+		//__LOGT__( TAG, "show(): working... SKIP" );
 		return false;
 	}
 
@@ -328,14 +328,14 @@ bool CToastMsgDlg::show(GtkWindow* pWindow, gpointer user_data,
 				//__LOGT__( TAG, "show(): new toast window x = %d, y = %d", msgWindow_x, msgWindow_y );
 
 				msgWindow_x += DEFAULT_TOAST_WINDOW_WIDTH_CENTER_POS( windowSize.width, msgWindowSize.width );
-				if ( pos == e_toastMsgShowDelay_TOP ) {
+				if ( pos == e_toastMsgShowPos_TOP ) {
 					// None
 				}
-				else if ( pos == e_toastMsgShowDelay_BOTTOM ) {
+				else if ( pos == e_toastMsgShowPos_BOTTOM ) {
 					msgWindow_y += DEFAULT_TOAST_WINDOW_BOTTOM_POS( windowSize.height, msgWindowSize.height );
 				}
 				else {
-					// e_toastMsgShowDelay_CENTER
+					// e_toastMsgShowPos_CENTER
 					// ...
 
 					msgWindow_y += DEFAULT_TOAST_WINDOW_HEIGHT_CENTER_POS( windowSize.height, msgWindowSize.height );

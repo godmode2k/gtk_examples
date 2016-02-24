@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Nov 28, 2014
 Filename:	CToastMsgDlg.h
 
-Last modified: Jan 6, 2015
+Last modified: May 28, 2015
 License:
 
 *
@@ -114,9 +114,9 @@ typedef enum _e_ToastMsgShowDelay_t {
 } e_ToastMsgShowDelay_t;
 
 typedef enum _e_ToastMsgShowPosition_t {
-	e_toastMsgShowDelay_TOP = 0,
-	e_toastMsgShowDelay_CENTER,
-	e_toastMsgShowDelay_BOTTOM
+	e_toastMsgShowPos_TOP = 0,
+	e_toastMsgShowPos_CENTER,
+	e_toastMsgShowPos_BOTTOM
 } e_ToastMsgShowPos_t;
 
 #ifdef __cplusplus
@@ -226,7 +226,7 @@ public:
 
 	virtual bool show(GtkWindow* pWindow, gpointer user_data = NULL,
 			const char* msg = NULL, e_ToastMsgShowDelay_t delay = e_toastMsgShowDelay_SHORT,
-			e_ToastMsgShowPos_t pos = e_toastMsgShowDelay_CENTER);
+			e_ToastMsgShowPos_t pos = e_toastMsgShowPos_CENTER);
 	virtual void task_in_thread(void);
 	void destroy_ui(void);
 	void stop(void);

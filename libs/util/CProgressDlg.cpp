@@ -297,7 +297,7 @@ gint CProgressDlg::show(GtkWindow* pWindow, gpointer user_data, const char* msg,
 
 
 	if ( get_working() ) {
-		__LOGT__( TAG, "show(): working... SKIP" );
+		//__LOGT__( TAG, "show(): working... SKIP" );
 		return ret_spinner_dlg;
 	}
 

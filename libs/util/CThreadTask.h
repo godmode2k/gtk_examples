@@ -31,6 +31,47 @@ Note:
 -----------------------------------------------------------------
 1. Build:
 	$ g++ ... -D__LINUX__ -D_REENTRANT -lpthread -lrt
+
+
+2. Usage: (a trivial example)
+void* Cxxx::inBackground(std::vector<void*>* pvecVal) {
+	__LOGT__( TAG, "inBackground()" );
+
+	// TEST
+	for ( int i = 0; i < 10; i++ ) {
+		__LOGT__( TAG, "inBackground(): i = %d", i );
+		update( (void*)"#---update---#" );
+	}
+
+	if ( pvecVal && (pvecVal->size() > 0) ) {
+		std::vector<void*>::iterator iter;
+		//for ( iter = pvecVal->begin(); iter != pvecVal->end(); iter++ ) {
+		//	__LOGT__( TAG, "inBackground(): str -> %s", (char*)(*iter) );
+		//}
+
+		__LOGT__( TAG, "inBackground(): str[0] -> %s", (char*)(*pvecVal)[0] );
+		__LOGT__( TAG, "inBackground(): str[1] -> %s", (char*)(*pvecVal)[1] );
+		__LOGT__( TAG, "inBackground(): str[2] -> %d", (int)(*pvecVal)[2] );
+		__LOGT__( TAG, "inBackground(): str[3] -> %s", (char*)(*pvecVal)[3] );
+	}
+
+	return ((void*)true);
+}
+
+void Cxxx::progressUpdate(void* pVal) {
+	__LOGT__( TAG, "progressUpdate()" );
+
+	char* pStr = reinterpret_cast<char*>(pVal);
+	if ( pStr )
+		__LOGT__( TAG, "%s", pStr );
+}
+
+void Cxxx::postExecute(void* pResult, void* pExtraVal) {
+	__LOGT__( TAG, "postExecute()" );
+
+	int result = reinterpret_cast<int>(pResult);
+	__LOGT__( TAG, "postExecute(): result = %s", (result? "TRUE" : "FALSE") );
+}
 -------------------------------------------------------------- */
 
 
