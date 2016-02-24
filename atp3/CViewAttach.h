@@ -8,7 +8,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CViewAttach.h
 
-Last modified: Feb 8, 2015
+Last modified: Jan 21, 2016
 License:
 
 *
@@ -102,6 +102,13 @@ Note:
 #define DEFAULT_ROTATION_UI_SLIDER_STR_0			"0"
 #define DEFAULT_ROTATION_UI_SLIDER_STR_SIZE			4
 
+// Patchers IO
+#define DEFAULT_PATCHERS_IO_CIRCLE_RADIUS			5
+#define DEFAULT_PATCHERS_IO_PADDING_WIDTH			10
+#define DEFAULT_PATCHERS_IO_PADDING_HEIGHT			13
+#define DEFAULT_PATCHERS_IO_NUM_OF_INOUT			1
+#define DEFAULT_PATCHERS_IO_NUM_OF_INOUT_LINKAGE	4
+
 
 
 #ifdef __cplusplus
@@ -111,7 +118,7 @@ extern "C" {
 typedef enum _e_objAttachType_t {
 	e_objAttachType_UNKNOWN = -1,
 	e_objAttachType_TEXT = 0,
-	e_objAttachType_IMAGE,
+	e_objAttachType_IMAGE
 } e_ObjAttachType_t;
 
 typedef enum _e_objAttachFontTypeface_t {
@@ -120,7 +127,7 @@ typedef enum _e_objAttachFontTypeface_t {
 	//e_objAttachFontTypeface_BOLD,
 	e_objAttachFontTypeface_ITALIC,
 	//e_objAttachFontTypeface_UNDERLINE,
-	e_objAttachFontTypeface_OBLIQUE,
+	e_objAttachFontTypeface_OBLIQUE
 } e_ObjAttachFontTypeface_t;
 
 /*
@@ -143,9 +150,129 @@ typedef enum _e_objAttachDirection_t {
 	e_objAttachDirection_TOP_CENTER,
 	e_objAttachDirection_RIGHT_CENTER,
 	e_objAttachDirection_BOTTOM_CENTER,
-	e_objAttachDirection_ROTATE_SLIDEBAR_REGION
+	e_objAttachDirection_ROTATE_SLIDEBAR_REGION,
+
+	// Patchers IO
+	e_objAttachDirection_PATCHERS_IO_INPUT,
+	e_objAttachDirection_PATCHERS_IO_OUTPUT
 } e_ObjAttachDirection_t;
 */
+
+
+// Patchers IO
+typedef struct _objAttachPatchersIO_XY_st {
+	float x, y;
+} __PACK__ objAttachPatchersIO_XY_st;
+typedef struct _objAttachPatchersIO_st {
+	char uuid[g_INT_MAX_UUID_SIZE];
+	unsigned short idx;
+	bool selected;
+	bool linked_input, linked_output;
+	bool drawn_input, drawn_output;
+	ColorARGB_st color_link_line;
+
+	objAttachPatchersIO_XY_st input_point;
+	objAttachPatchersIO_XY_st output_point;
+	int input_val1, input_val2, input_val3;
+	int output_val1, output_val2, output_val3;
+	//
+	// link lines: src output -> dst input
+	float input_x, input_y; 	// currently position
+	float output_x, output_y;	// currently position
+	//
+	char ln_pio_input_uuid[g_INT_MAX_UUID_SIZE];
+	_objAttachPatchersIO_st* ln_pio_input;	// linking patchers io; src output -> dst input
+	//_objAttachPatchersIO_st* ln_pio_output;	// linking patchers io; src input -> dst output
+	//
+	//_objAttachPatchersIO_st* ln_pio_input[DEFAULT_PATCHERS_IO_NUM_OF_INOUT_LINKAGE];
+	_objAttachPatchersIO_st* ln_pio_output[DEFAULT_PATCHERS_IO_NUM_OF_INOUT_LINKAGE];
+	int ln_pio_input_registered_idx;		// default: -1
+	//int ln_pio_output_registered_idx;		// default: -1
+
+	void (*fn)(void* arg1, void* arg2, void* arg3);
+	//std::function<void (void*, void*, void*)> fn;
+	//fn = [](void* arg1, void* arg2, void* arg3)->void {
+	//};
+	
+
+	// Ctor
+	//_objAttachPatchersIO_st() : fn(NULL) { }
+} __PACK__ objAttachPatchersIO_st;
+#define PATCHERS_IO_ADD_OUT_TO_IN(dst_pio_input, src_out) \
+	[this](_objAttachPatchersIO_st* dst_pio_input, _objAttachPatchersIO_st* src_out)->bool { \
+		bool ret = false; \
+		if ( dst_pio_input && src_out ) { \
+			if ( !dst_pio_input->ln_pio_output ) return false; \
+			for ( int i = 0; i < DEFAULT_PATCHERS_IO_NUM_OF_INOUT_LINKAGE; i++ ) { \
+				if ( !dst_pio_input->ln_pio_output[i] ) { \
+					dst_pio_input->ln_pio_output[i] = src_out; \
+					src_out->ln_pio_input_registered_idx = i; \
+					snprintf( src_out->ln_pio_input_uuid, sizeof(src_out->ln_pio_input_uuid), "%s", \
+								dst_pio_input->uuid ); \
+					ret = true; \
+					__LOGT__( TAG, "PATCHERS_IO_ADD_OUT_TO_IN(): added pos = %d\n", i ); \
+					break; \
+				} \
+			} \
+		} \
+		return ret; \
+	} ( dst_pio_input, src_out );
+#define PATCHERS_IO_DEL_OUT_FROM_IN(dst_pio_input, src_out) \
+	[this](_objAttachPatchersIO_st* dst_pio_input, _objAttachPatchersIO_st* src_out)->bool { \
+		bool ret = false; \
+		if ( dst_pio_input && src_out ) { \
+			const int idx = src_out->ln_pio_input_registered_idx; \
+			if ( !dst_pio_input->ln_pio_output ) return false; \
+			if ( (idx < 0) || (idx > DEFAULT_PATCHERS_IO_NUM_OF_INOUT_LINKAGE) ) return false; \
+			if ( dst_pio_input->ln_pio_output[idx] == src_out) { \
+				dst_pio_input->ln_pio_output[idx] = NULL; \
+				src_out->ln_pio_input_registered_idx = -1; \
+				src_out->ln_pio_input = NULL; \
+				memset( src_out->ln_pio_input_uuid, 0x00, sizeof(src_out->ln_pio_input_uuid) ); \
+				ret = true; \
+				__LOGT__( TAG, "PATCHERS_IO_DEL_OUT_FROM_IN(): deleted pos = %d\n", idx ); \
+			} \
+		} \
+		return ret; \
+	} ( dst_pio_input, src_out );
+/*
+#define PATCHERS_IO_DEL_OUT_FROM_IN_BY_POS(_ret, dst_pio_input, pos) \
+	[this](_objAttachPatchersIO_st* dst_pio_input, _objAttachPatchersIO_st* src_out)->bool { \
+		bool ret = false; \
+		if ( dst_pio_input ) { \
+			if ( pos < 0 || (pos > DEFAULT_PATCHERS_IO_NUM_OF_INOUT_LINKAGE) ) return false; \
+			dst_pio_input->ln_pio_output[pos] = NULL; \
+			src_out->ln_pio_input_registered_idx = -1; \
+			src_out->ln_pio_input = NULL; \
+			memset( src_out->ln_pio_input_uuid, 0x00, sizeof(src_out->ln_pio_input_uuid) ); \
+			ret = true; \
+			__LOGT__( TAG, "PATCHERS_IO_DEL_OUT_FROM_IN_BY_POS(): deleted pos = %d\n", i ); \
+		} \
+		return ret; \
+	} ( dst_pio_input, pos );
+*/
+#define PATCHERS_IO_DEL_OUT_FROM_IN_ALL(dst_pio_input) \
+	[this](_objAttachPatchersIO_st* dst_pio_input, _objAttachPatchersIO_st* src_out)->bool { \
+		bool ret = false; \
+		if ( dst_pio_input ) { \
+			if ( !dst_pio_input->ln_pio_output ) return false; \
+			for ( int i = 0; i < DEFAULT_PATCHERS_IO_NUM_OF_INOUT_LINKAGE; i++ ) { \
+				if ( dst_pio_input->ln_pio_output[i] ) { \
+					dst_pio_input->ln_pio_output[i]->ln_pio_input = NULL; \
+					dst_pio_input->ln_pio_output[i]->ln_pio_input_registered_idx = -1; \
+					memset( dst_pio_input->ln_pio_output[i]->ln_pio_input_uuid, 0x00, \
+							sizeof(dst_pio_input->ln_pio_output[i]->ln_pio_input_uuid) ); \
+					dst_pio_input->ln_pio_output[i] = NULL; \
+					ret = true; \
+					__LOGT__( TAG, "PATCHERS_IO_ADD_OUT_TO_IN(): added pos = %d\n", i ); \
+					break; \
+				} \
+			} \
+		} \
+		return ret; \
+	} ( dst_pio_input, src_out );
+
+
 
 #ifdef __cplusplus
 }
@@ -156,6 +283,7 @@ typedef enum _e_objAttachDirection_t {
 
 //! Prototype
 // ---------------------------------------------------------------
+/*
 namespace g_Func {
 	#define TAG__g_Func		"g_Func"
 } // namespace g_Func
@@ -166,6 +294,7 @@ namespace g_FuncSignalHandler {
 	// Menu Item: Button
 	//void on_button_open_clicked(GtkWidget* widget, gpointer user_data);
 } // namespace g_FuncSignalHandler
+*/
 
 // ---------------------------------------------------------------
 
@@ -195,10 +324,8 @@ class CViewAttach : virtual public CBaseView {
 private:
 	const char* TAG;
 	char* TAG2;
+	char m_uuid[g_INT_MAX_UUID_SIZE];
 
-	//GError* m_pError;
-	//Widgets_st* m_pWidgets;
-	
 	//canvas_t* m_canvas;
 	int m_width;
 	int m_height;
@@ -208,6 +335,9 @@ private:
 
 	// Rectangle
 	GdkRectangle m_rect;
+
+	// Touch event
+	CKeyEvent* m_touch_event;
 	float m_touchX, m_touchY;
 	e_ObjAttachDirection_t m_direction;
 
@@ -218,6 +348,7 @@ private:
 	e_ObjAttachFontTypeface_t m_text_font_typeface;
 	bool m_text_font_bold;
 	cairo_surface_t* m_image;
+	bool m_text_show_boundary;
 
 	// Rotation
 	bool m_obj_rotate;
@@ -227,6 +358,11 @@ private:
 	GdkRectangle m_obj_rotate_slide_rect;
 	GdkRectangle m_obj_rotate_slidebar_rect;
 	float m_obj_rotate_slide_touchX, m_obj_rotate_slide_touchY;
+
+	// Patchers IO
+	std::vector<objAttachPatchersIO_st*>* m_pvec_patchers_io;
+	std::vector<CViewAttach*>* m_pvec_attach;
+	bool m_show_patchers_io;
 protected:
 public:
 	// Ctor/Dtor
@@ -245,6 +381,7 @@ public:
 	virtual const char* get_tag(void) { return TAG; }
 	void set_tag2(const char* tag) { TAG2 = (char*)tag; }
 	const char* get_tag2(void) { return TAG2; }
+	const char* get_uuid_str(void) { return m_uuid; }
 
 	// ---------------------------------------------------------------
 	
@@ -271,6 +408,8 @@ public:
 	virtual void onTouchEventDown(CKeyEvent* event, float x, float y);
 	virtual void onTouchEventUp(CKeyEvent* event, float x, float y);
 	virtual void onTouchEventMove(CKeyEvent* event, float x, float y);
+	void onTouchEvent_set_event(CKeyEvent* event) { m_touch_event = event; }
+	CKeyEvent* onTouchEvent_get_event(void) { return m_touch_event; }
 
 	// ---------------------------------------------------------------
 	
@@ -296,8 +435,18 @@ public:
 	void draw_paint_color(canvas_t* canvas, bool fraction,
 			e_ObjAttachPaintColor_t color, guint16 a = 0);
 
-	// Figure
+	// Figure, Line
 	void draw_circle(canvas_t* canvas, float x, float y, double radius, bool fill = false);
+	void draw_triangle(canvas_t* canvas, float x, float y, float size, bool fill = false);
+	void draw_triangle(canvas_t* canvas, double x, double y, double diff_x, double diff_y,
+			float size, bool fill = false);
+	void draw_crossline(canvas_t* canvas, float x, float y, float size);
+	void draw_rectangle(canvas_t* canvas, float x, float y, double radius, bool fill = false);
+	void draw_rectangle(canvas_t* canvas, float x, float y, float w, float h, bool fill = false);
+	void draw_drag_area(canvas_t* canvas, float x, float y, double radius, bool circle = false, bool fill = false);
+	void draw_rectangle_boundary(canvas_t* canvas, const GdkRectangle rect, bool fill = false);
+	void draw_rectangle_boundary(canvas_t* canvas, float x, float y, float w, float h, bool fill = false);
+	void draw_curved_line(canvas_t* canvas, double start_x, double start_y, double end_x, double end_y);
 
 	// Image
 	bool load_image(const char* filename);
@@ -337,6 +486,8 @@ public:
 	void draw_text_pango(canvas_t* canvas, const char* text, const GdkRectangle rect, bool simple = true);
 	void draw_text_pango(canvas_t* canvas, const char* text, double x, double y, bool simple = true);
 	void draw_text_pango(canvas_t* canvas, const char* text, double x, double y, double w, double h, bool simple = true);
+	void set_text_show_boundary(bool show) { m_text_show_boundary = show; }
+	bool get_text_show_boundary(void) { return m_text_show_boundary; }
 
 	// Rotation
 	//!  - Rotate the object image and text(Pango only currently)
@@ -355,6 +506,39 @@ public:
 	void draw_obj_rotate_ui(canvas_t* canvas, double x, double y);
 	void draw_obj_rotate_ui(canvas_t* canvas, double x, double y, double w, double h);
 	void set_obj_rotate_update_position(e_ObjAttachDirection_t direction, float x, float y);
+
+	// Patchers IO
+	void patchers_io_set_show(bool show) { m_show_patchers_io = show; }
+	bool patchers_io_get_show(void) { return m_show_patchers_io; }
+	void patchers_io_set_attached_list(std::vector<CViewAttach*>& attach) { m_pvec_attach = &attach; }
+	std::vector<CViewAttach*>* patchers_io_get_attached_list(void) { return m_pvec_attach; }
+	bool patchers_io_add(objAttachPatchersIO_st* io);
+	bool patchers_io_set(objAttachPatchersIO_st* io, const unsigned short idx);
+	bool patchers_io_delete(const unsigned short idx);
+	bool patchers_io_delete_all(void);
+	objAttachPatchersIO_st* patchers_io_get(const unsigned short idx);
+	std::vector<objAttachPatchersIO_st*>* patchers_io_get_all(void) { return m_pvec_patchers_io; }
+	bool patchers_io_is_selected(GdkRectangle rect, float x, float y);
+	bool patchers_io_set_select(const unsigned short idx);
+	bool patchers_io_get_selected(const unsigned short idx);
+	bool patchers_io_set_inout_xy(const unsigned short idx, float x, float y, bool in);
+	bool patchers_io_set_inout_xy(const unsigned short idx, float in_x, float in_y,
+			float out_x, float out_y);
+	bool patchers_io_linking_detection(float* _ret_x = NULL, float* _ret_y = NULL);
+	bool patchers_io_linking_detection(float x, float y, float* _ret_x = NULL, float* _ret_y = NULL);
+	bool patchers_io_linking_detection(std::vector<CViewAttach*>* attach,
+			float _x = 0.f, float _y = 0.f, bool use_xy = false,
+			float* _ret_x = NULL, float* _ret_y = NULL);
+	void patchers_io_info(void);
+	void draw_patchers_io(canvas_t* canvas);
+	//
+	bool __test_patchers_io_add(unsigned short patchers = 1);
+	//! ---DELETE---
+	//bool __test_patchers_io_link(const unsigned short src_idx, CViewAttach* dst,
+	//		const unsigned short dst_idx, bool dst_in = true) const;
+	//bool __test_patchers_io_link_adjust(unsigned short src, unsigned short dst);
+
+
 
 	// Draw all of objects
 	void draw_obj(canvas_t* canvas);

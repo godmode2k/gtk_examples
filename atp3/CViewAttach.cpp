@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	CViewAttach.cpp
 
-Last modified: Feb 8, 2015
+Last modified: Jan 27, 2016
 License:
 
 *
@@ -83,9 +83,12 @@ void CViewAttach::__init(void) {
 	m_obj_type = e_objAttachType_UNKNOWN;
 	m_selected = false;
 	TAG2 = NULL;
+	memset( (void*)&m_uuid, 0x00, sizeof(m_uuid) );
+	get_uuid( m_uuid, sizeof(m_uuid) );
 
 	// Text
 	m_text = NULL;
+	m_text_show_boundary = false;
 	m_text_font_size = DEFAULT_TEXT_FONT_SIZE;
 	//m_text_font_color = (ColorARGB_st) { PAINT_COLOR_UINT8_16(255), 0, 0, 0 };
 	m_text_font_color.a = PAINT_COLOR_UINT8_16( 255 );
@@ -102,6 +105,7 @@ void CViewAttach::__init(void) {
 	// Touch point, direction
 	m_touchX = m_touchY = 0.f;
 	m_direction = e_objAttachDirection_UNKNOWN;
+	m_touch_event = NULL;
 
 	// Object rectangle
 	m_rect.x = 50;
@@ -122,8 +126,16 @@ void CViewAttach::__init(void) {
 	m_obj_rotate_slidebar_rect.height = DEFAULT_DRAW_CIRCLE_RADIUS;
 	m_obj_rotate_slidebar_pos = 0;
 
+
+	// Patchers IO
+	m_pvec_patchers_io = new std::vector<objAttachPatchersIO_st*>;
+	m_show_patchers_io = false;
+
+
+
 	// --------------------
 	//load_image( "./test.png" );
+	__test_patchers_io_add();
 }
 
 // Release
@@ -146,35 +158,60 @@ void CViewAttach::__release(void) {
 		cairo_surface_destroy( m_image );
 		m_image = NULL;
 	}
+
+	// Patchers IO
+	if ( m_pvec_patchers_io ) {
+		if ( !m_pvec_patchers_io->empty() ) {
+			std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+			for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ) {
+				objAttachPatchersIO_st* io = (*iter);
+
+				if ( io ) {
+					{
+						// src output -> dst input
+						//
+						// previously linked
+						if ( io->ln_pio_input && io->ln_pio_input->ln_pio_output ) {
+							if ( io->ln_pio_input->ln_pio_output[io->ln_pio_input_registered_idx] == io ) {
+								io->ln_pio_input->ln_pio_output[io->ln_pio_input_registered_idx] = NULL;
+								io->ln_pio_input_registered_idx = -1;
+							}
+						}
+					}
+
+					{
+						// dst output -> src input
+						//
+						for ( int i = 0; i < DEFAULT_PATCHERS_IO_NUM_OF_INOUT_LINKAGE; i++ ) {
+							if ( !io->ln_pio_output[i] )
+								continue;
+
+							// previously linked
+							io->ln_pio_output[i]->ln_pio_input = NULL;
+							io->ln_pio_output[i]->ln_pio_input_registered_idx = -1;
+							memset( io->ln_pio_output[i]->ln_pio_input_uuid, 0x00,
+									sizeof(io->ln_pio_output[i]->ln_pio_input_uuid) );
+							io->ln_pio_output[i] = NULL;
+						}
+					}
+
+					io->fn = NULL;
+
+					delete io;
+					io = NULL;
+
+					iter = m_pvec_patchers_io->erase( iter );
+				}
+			}
+
+			m_pvec_patchers_io->clear();
+		}
+
+		delete m_pvec_patchers_io;
+		m_pvec_patchers_io = NULL;
+	}
 }
-
-#if 0
-// Initialize Widget structure
-bool CViewAttach::init_widget_all(Widgets_st** pWidgets) {
-	__LOGT__( TAG, "init_widget_all()" );
-
-	(*pWidgets) = g_slice_new( Widgets_st );
-
-	if ( pWidgets == NULL )
-		return false;
-	/*
-	// ...
-	if ( (*pWidgets)->pWindow == NULL )
-		return false;
-
-	(*pWidgets)->pWindow = NULL;
-	*/
-
-	return true;
-}
-
-// Initialize
-bool CViewAttach::init_ui_with_callback(void) {
-	__LOGT__( TAG, "init_ui_with_callback()" );
-
-	return true;
-}
-#endif
 
 
 
@@ -270,6 +307,15 @@ void CViewAttach::draw(CBaseView* view) {
 
 		// ...
 		draw_obj( canvas );
+
+
+		{
+			if ( onTouchEvent_get_event() ) {
+				if ( !onTouchEvent_get_event()->is_mouse_lbtn() ) {
+					m_direction = e_objAttachDirection_UNKNOWN;
+				}
+			}
+		}
 	}
 }
 
@@ -279,6 +325,8 @@ void CViewAttach::draw(CBaseView* view) {
 // ---------------------------------------------------------------
 bool CViewAttach::onTouchEvent(CKeyEvent* event) {
 	//__LOGT__( TAG, "onTouchEvent()" );
+	
+	onTouchEvent_set_event( event );
 
 	switch ( event->get_type() ) {
 		case e_eventType_UNKNOWN:
@@ -354,12 +402,10 @@ bool CViewAttach::onTouchEvent(CKeyEvent* event) {
 				onTouchEventMove( event, event->get_mouse_x(), event->get_mouse_y() );
 
 				//! SEE CViewMain.cpp:: onTouchEvent()
-				/*
-				if ( !(event->is_mouse_lbtn() || event->is_mouse_rbtn() ||
-						event->is_mouse_wbtn()) ) {
-					return false;
-				}
-				*/
+				//if ( !(event->is_mouse_lbtn() || event->is_mouse_rbtn() ||
+				//		event->is_mouse_wbtn()) ) {
+				//	return false;
+				//}
 			} break;
 
 		case e_eventAction_mouse_wbtn_pressed:
@@ -384,7 +430,6 @@ bool CViewAttach::onTouchEvent(CKeyEvent* event) {
 
 	// Redraw
 	invalidate();
-
 
 
 	return true;
@@ -556,6 +601,14 @@ void CViewAttach::get_str_direction(e_ObjAttachDirection_t direction) {
 			{
 				__LOGT__( TAG, "get_str_direction(): BOTTOM_CENTER" );
 			} break;
+		case e_objAttachDirection_PATCHERS_IO_INPUT:
+			{
+				__LOGT__( TAG, "get_str_direction(): PATCHERS_IO_INPUT" );
+			} break;
+		case e_objAttachDirection_PATCHERS_IO_OUTPUT:
+			{
+				__LOGT__( TAG, "get_str_direction(): PATCHERS_IO_OUTPUT" );
+			} break;
 		default:
 			{
 				__LOGT__( TAG, "get_str_direction(): UNKNOWN" );
@@ -648,12 +701,23 @@ e_ObjAttachDirection_t CViewAttach::is_obj_selected_direction(GdkRectangle rect,
 	if ( (ret == e_objAttachDirection_UNKNOWN) || (ret == e_objAttachDirection_RESERVED) ) {
 		set_select( false );
 		set_obj_rotate( false );
+
+		// Patchers IO
+		if ( patchers_io_is_selected(rect, x, y) ) {
+			ret = get_selected_direction();
+			set_select( true );
+		}
 	}
 	else {
 		set_select( true );
 	}
 
 	//__LOGT__( TAG, "is_obj_selected_direction(): selected = %s", (get_selected()? "TRUE" : "FALSE") );
+
+	// Patchers IO
+	if ( patchers_io_get_show() ) {
+		patchers_io_info();
+	}
 
 
 	return ret;
@@ -910,6 +974,43 @@ void CViewAttach::update_position(e_ObjAttachDirection_t direction, float x, flo
 						m_rect.height += (int)pos_y;
 					}
 				} break;
+			// Patchers IO
+			case e_objAttachDirection_PATCHERS_IO_INPUT:
+			case e_objAttachDirection_PATCHERS_IO_OUTPUT:
+				{
+					if ( !m_pvec_patchers_io->empty() ) {
+						std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+						for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+							objAttachPatchersIO_st* io = (*iter);
+
+							if ( io && io->selected ) {
+								if ( direction == e_objAttachDirection_PATCHERS_IO_INPUT ) {
+									//__LOGT__( TAG, "update_position(): PATCHERS_IO_INPUT: x = %f, y = %f", x, y );
+
+									// Input
+									// link lines: src input -> dst output
+									//io->output_point.x = x;
+									//io->output_point.y = y;
+									io->output_x = x;
+									io->output_y = y;
+								}
+								else if ( direction == e_objAttachDirection_PATCHERS_IO_OUTPUT ) {
+									//__LOGT__( TAG, "update_position(): PATCHERS_IO_OUTPUT: x = %f, y = %f", x, y );
+
+									// Output
+									// link lines: src output -> dst input
+									//io->input_point.x = x;
+									//io->input_point.y = y;
+									io->input_x = x;
+									io->input_y = y;
+								}
+
+								break;
+							}
+						} // for()
+					}
+				} break;
 			default:
 				{
 				} break;
@@ -1068,6 +1169,327 @@ void CViewAttach::draw_circle(canvas_t* canvas, float x, float y, double radius,
 
 		// draws the outline of the circle
 		//cairo_stroke_preserve( canvas );
+	}
+}
+
+void CViewAttach::draw_triangle(canvas_t* canvas, float x, float y, float size, bool fill) {
+	//__LOGT__( TAG, "draw_triangle()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_triangle(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		cairo_new_sub_path( canvas );
+
+		// ▲
+		cairo_move_to( canvas, x, y );
+		cairo_line_to( canvas, (x - size), (y + size) );
+		cairo_move_to( canvas, x, y );
+		cairo_line_to( canvas, (x + size), (y + size) );
+		cairo_move_to( canvas, (x - size), (y + size) );
+		cairo_line_to( canvas, (x + size), (y + size) );
+
+		/*
+		// ►
+		cairo_move_to( canvas, x, y );
+		cairo_line_to( canvas, (x - size), (y - size) );
+		cairo_move_to( canvas, x, y );
+		cairo_line_to( canvas, (x - size), (y + size) );
+		cairo_move_to( canvas, (x - size), (y - size) );
+		cairo_line_to( canvas, (x - size), (y + size) );
+		*/
+
+
+		// ◄
+		// ▼
+
+
+		if ( fill )
+			cairo_fill( canvas );
+
+
+		// draws the outline
+		//cairo_stroke_preserve( canvas );
+	}
+}
+
+//! TODO
+// - rotates trangle follow the x and y
+//
+// diff_x: distances between x and target x
+// diff_y: distances between y and target y
+void CViewAttach::draw_triangle(canvas_t* canvas, double x, double y, double diff_x, double diff_y,
+		float size, bool fill) {
+	//__LOGT__( TAG, "draw_triangle()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_triangle(): canvas_t == NULL" );
+		return;
+	}
+
+	//
+	//    +---+
+	//    o   o-.  <--- start (x, y)
+	//    +---+  .
+	//            .
+	//             .
+	//        +---> * <--- (x, y)
+	//  diff_ |      .
+	//  x, y  |       .
+	//        |        .  +---+
+	//        +-------> .-o   o
+	//                  ^ +---+
+	//                  |
+	//                  |
+	//                  +--- end (x, y)
+
+	{
+		const int pad = 4;
+		//const double rel_x = (diff_x / 2) / pad;
+		//const double rel_y = (diff_y / 2) / pad;
+		const double rel_x = diff_x;
+		const double rel_y = diff_y;
+
+		cairo_new_sub_path( canvas );
+
+
+		__LOGT__( TAG, "draw_triangle(): x, y = (%f, %f)", x, y );
+		__LOGT__( TAG, "draw_triangle(): rel (x, y) distance = (%f, %f)", rel_x, rel_y );
+
+
+		/*
+		// +: Crossline
+		cairo_move_to( canvas, x + rel_y, (y - size) + rel_y );
+		cairo_line_to( canvas, x - rel_y, (y + size) - rel_y );
+		cairo_move_to( canvas, (x - size) + rel_y, y + rel_y );
+		cairo_line_to( canvas, (x + size) - rel_y, y - rel_y );
+		*/
+
+		// ►
+		// |
+		//cairo_move_to( canvas, x + rel_y, (y - size) + rel_y );
+		//cairo_line_to( canvas, x - rel_y, (y + size) - rel_y );
+		cairo_move_to( canvas, x + rel_y, (y - size) );
+		cairo_line_to( canvas, x - rel_y, (y + size) );
+
+		//cairo_move_to( canvas, x + rel_y, (y - size) + rel_y );
+		//cairo_line_to( canvas, (x + size) - rel_y, y - rel_y );
+
+		//cairo_move_to( canvas, (x - size), y - rel_y );
+		//cairo_line_to( canvas, (x + size), y + rel_y );
+
+		// --
+		//cairo_move_to( canvas, x + rel_y, (y + size) - rel_y );
+		//cairo_line_to( canvas, x - rel_y, (y - size) + rel_y );
+
+
+
+		if ( fill )
+			cairo_fill( canvas );
+
+
+		// draws the outline
+		//cairo_stroke_preserve( canvas );
+	}
+}
+
+void CViewAttach::draw_crossline(canvas_t* canvas, float x, float y, float size) {
+	//__LOGT__( TAG, "draw_crossline()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_crossline(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		cairo_new_sub_path( canvas );
+
+		// +
+		cairo_move_to( canvas, x, (y - size) );
+		cairo_line_to( canvas, x, (y + size) );
+		cairo_move_to( canvas, (x - size), y );
+		cairo_line_to( canvas, (x + size), y );
+
+
+
+		// draws the outline
+		//cairo_stroke_preserve( canvas );
+	}
+}
+
+void CViewAttach::draw_rectangle(canvas_t* canvas, float x, float y, double radius, bool fill) {
+	//__LOGT__( TAG, "draw_rectangle()" );
+	
+	draw_rectangle( canvas, x - ((int)radius >> 1), y - ((int)radius >> 1), radius, radius, fill );
+}
+
+void CViewAttach::draw_rectangle(canvas_t* canvas, float x, float y, float w, float h, bool fill) {
+	//__LOGT__( TAG, "draw_rectangle()" );
+
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_rectangle(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		cairo_rectangle( canvas, x, y, w, h );
+
+		if ( fill )
+			cairo_fill( canvas );
+	}
+}
+
+void CViewAttach::draw_drag_area(canvas_t* canvas, float x, float y, double radius, bool circle, bool fill) {
+	//__LOGT__( TAG, "draw_drag_area()" );
+
+	if ( circle )
+		draw_circle( canvas, x, y, radius, fill );
+	else
+		draw_rectangle( canvas, x, y, radius, fill );
+}
+
+void CViewAttach::draw_rectangle_boundary(canvas_t* canvas, const GdkRectangle rect, bool fill) {
+	//__LOGT__( TAG, "draw_rectangle_boundary()" );
+	
+	draw_rectangle_boundary( canvas, (float)rect.x, (float)rect.y, (float)rect.width, (float)rect.height );
+}
+
+void CViewAttach::draw_rectangle_boundary(canvas_t* canvas, float x, float y, float w, float h, bool fill) {
+	//__LOGT__( TAG, "draw_rectangle_boundary()" );
+
+	draw_rectangle( canvas, x, y, w, h, fill );
+}
+
+void CViewAttach::draw_curved_line(canvas_t* canvas,
+		double start_x, double start_y, double end_x, double end_y) {
+	//__LOGT__( TAG, "draw_curved_line()" );
+
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_curved_line(): canvas_t == NULL" );
+		return;
+	}
+
+	{
+		// Pmid = (x1 + x3) / 2, (y1 + y3) / 2
+		/*
+		 *
+		 *                                  rotate 90 degree CW
+		 *               * (x4, y4; after) <---------------------------+
+		 *                .                                            |
+		 *                 .                                           |
+		 *                  .                                          |
+		 *                   .  END                                    |
+		 *                    * (x3, y3)                               |
+		 *                   .                                         |
+		 *                  .                                          |
+		 *                 .                                           |
+		 *                .                                            |
+		 *               * <--- split point; pivot (x2, y2; before), pivot (x4, y4; before)
+		 *              .                     |
+		 *             .                      |
+		 *            .                       |
+		 * START     .                        |
+		 * (x1, y1) *                         |
+		 *           .          +-------------+
+		 *            .         |
+		 *             .        | rotate 90 degree CW
+		 *              .       v
+		 *               * (x2, y2; after)
+		 *
+		 *
+		 *
+		 *	const double xm = ( x1 + x3 ) / 2;
+		 *	const double ym = ( y1 + y3 ) / 2;
+		 *
+		 *	// rotate Pmid by 90 degrees around p1 to get p2
+		 *	x2 = -(ym - y1) + y1;
+		 *	y2 = (xm - x1) + x1;
+		 *
+		 *	// rotate Pmid by 90 degrees around p3 to get p4
+		 *	x4 = -(ym - y3) + y3;
+		 *	y4 = (xm - x3) + x3;
+		 *
+		 *
+		 *	cairo_move_to( canvas, x1, y1 );
+		 *	cairo_curve_to( canvas, x2, y2, x4, y4, x3, y3 );
+		 *
+		 *	cairo_set_line_width( canvas, 10.0f );
+		 *	cairo_stroke( canvas );
+		 *
+		 *	cairo_set_source_rgba( canvas, 1, 0.2f, 0.2f, 0.6f );
+		 *	cairo_set_line_width( canvas, 10.0f );
+		 *	cairo_move_to( canvas, x1, y1 ); cairo_line_to( canvas, x2, y2 );
+		 *	cairo_move_to( canvas, x3, y3 ); cairo_line_to( canvas, x4, y4 );
+		 *	cairo_stroke( canvas );
+		 *
+		 *
+		*/
+		const double x1 = start_x, y1 = start_y;
+		const float curv_pivot_x = 15.f, curv_pivot_y = 20.f;
+		const float line_width = 3.0f;
+		const double x3 = end_x, y3 = end_y;
+		double x2 = 0.f, y2 = 0.f, x4 = 0.f, y4 = 0.f;
+
+		// x2, y2
+		x2 = start_x + curv_pivot_x;
+		y2 = start_y + curv_pivot_y;
+
+		// x4, y4
+		x4 = end_x - curv_pivot_x;
+		y4 = end_y - curv_pivot_y;
+
+
+		cairo_move_to( canvas, x1, y1 );
+		cairo_curve_to( canvas, x2, y2, x4, y4, x3, y3 );
+
+		cairo_set_line_width( canvas, line_width );
+		cairo_stroke( canvas );
+
+		
+/*
+		// direction
+		{
+			const double new_start_x = start_x + ((end_x - start_x) / 2);
+			const double new_start_y = start_y + ((end_y - start_y) / 2);
+			//
+			// set start position as following the curved line
+			//double dir_pad_x = (x4 - new_start_x) / 2;
+			//double dir_pad_y = (y4 - new_start_y) / 2;
+			//
+			//const double mid_pos_x = -(new_start_y - start_y) + start_y;
+			//const double mid_pos_y = -(new_start_x - start_x) + start_x;
+
+
+			//__LOGT__( TAG, "draw_curved_line(): (s_x = %f, s_y = %f, e_x = %f, e_y = %f),\n"
+			//				"    x = %f, y = %f",
+			//				start_x, start_y, end_x, end_y,
+			//				dir_pad_x, dir_pad_y );
+
+			{
+				// show the vertex
+				cairo_save( canvas );
+					draw_paint_color( canvas, true, e_objAttachPaintColor_RED );
+					draw_circle( canvas, (new_start_x), (new_start_y), 3, true );
+					//draw_triangle( canvas, (new_start_x), (new_start_y), 3.f );
+					cairo_stroke( canvas );
+				cairo_restore( canvas );
+
+				//__LOGT__( TAG, "draw_curved_line(): ---> (%f, %f) (%f, %f)", start_x, start_y,
+				//				(new_start_x - start_x), (new_start_y - start_y) );
+				//draw_triangle( canvas, new_start_x, new_start_y,
+				//				(new_start_x - start_x), (new_start_y - start_y), 10.f );
+
+				__LOGT__( TAG, "draw_curved_line(): ---> (%f, %f) (%f, %f)", end_x, end_y,
+								(end_x - new_start_x), (end_y - new_start_y) );
+				draw_triangle( canvas, new_start_x, new_start_y,
+								(end_x - new_start_x), (end_y - new_start_y), 10.f );
+			}
+
+			cairo_stroke( canvas );
+		}
+*/
 	}
 }
 
@@ -2650,6 +3072,1165 @@ void CViewAttach::set_obj_rotate_update_position(e_ObjAttachDirection_t directio
 	}
 }
 
+// Patchers IO
+bool CViewAttach::patchers_io_add(objAttachPatchersIO_st* io) {
+	//__LOGT__( TAG, "patchers_io_add()" );
+	
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "patchers_io_add(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+	if ( !io ) return false;
+
+
+	m_pvec_patchers_io->push_back( io );
+
+
+	return true;
+}
+
+bool CViewAttach::patchers_io_set(objAttachPatchersIO_st* io, const unsigned short idx) {
+	//__LOGT__( TAG, "patchers_io_set()" );
+	
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "patchers_io_set(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+	if ( !io ) return false;
+
+
+	bool ret = false;
+
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* _io = (*iter);
+
+			if ( _io ) {
+				if ( _io->idx == idx ) {
+					//_io->rect = io->rect;
+					//_io->x = io->x;
+					//_io->y = io->y;
+					_io->idx = io->idx;
+					_io->selected = io->selected;
+					_io->linked_input = io->linked_input;
+					_io->linked_output = io->linked_output;
+					_io->drawn_input = io->drawn_input;
+					_io->drawn_output = io->drawn_output;
+					_io->input_point.x = io->input_point.x;
+					_io->input_point.y = io->input_point.y;
+					_io->output_point.x = io->output_point.x;
+					_io->output_point.y = io->output_point.y;
+					_io->input_val1 = io->input_val1;
+					_io->input_val2 = io->input_val2;
+					_io->input_val3 = io->input_val3;
+					_io->output_val1 = io->output_val1;
+					_io->output_val2 = io->output_val2;
+					_io->output_val3 = io->output_val3;
+					//_io->input_x = io->input_x;
+					//_io->input_y = io->input_y;
+					//_io->output_x = io->output_x;
+					//_io->output_y = io->output_y;
+					//_io->ln_pio_input = io->ln_pio_input;
+					//_io->ln_pio_output = io->ln_pio_output;
+					_io->fn = io->fn;
+
+					ret = true;
+					break;
+				}
+			}
+		} // for()
+	}
+
+
+	return ret;
+}
+
+bool CViewAttach::patchers_io_delete(const unsigned short idx) {
+	//__LOGT__( TAG, "patchers_io_delete()" );
+	
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "patchers_io_delete(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+
+	bool ret = false;
+
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* io = (*iter);
+
+			if ( io ) {
+				if ( io->idx == idx ) {
+					//! TODO
+					// ...
+
+					io->fn = NULL;
+
+					delete io;
+					io = NULL;
+
+					m_pvec_patchers_io->erase( iter );
+
+					ret = true;
+					break;
+				}
+			}
+		} // for()
+	}
+
+
+	return ret;
+}
+
+bool CViewAttach::patchers_io_delete_all(void) {
+	//__LOGT__( TAG, "patchers_io_delete_all()" );
+	
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "patchers_io_delete_all(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* io = (*iter);
+
+			if ( io ) {
+				{
+					// src output -> dst input
+					//
+					// previously linked
+					if ( io->ln_pio_input && io->ln_pio_input->ln_pio_output ) {
+						if ( io->ln_pio_input->ln_pio_output[io->ln_pio_input_registered_idx] == io ) {
+							io->ln_pio_input->ln_pio_output[io->ln_pio_input_registered_idx] = NULL;
+							io->ln_pio_input_registered_idx = -1;
+						}
+					}
+				}
+
+				{
+					// dst output -> src input
+					//
+					for ( int i = 0; i < DEFAULT_PATCHERS_IO_NUM_OF_INOUT_LINKAGE; i++ ) {
+						if ( !io->ln_pio_output[i] )
+							continue;
+
+						// previously linked
+						io->ln_pio_output[i]->ln_pio_input = NULL;
+						io->ln_pio_output[i]->ln_pio_input_registered_idx = -1;
+						memset( io->ln_pio_output[i]->ln_pio_input_uuid, 0x00,
+								sizeof(io->ln_pio_output[i]->ln_pio_input_uuid) );
+						io->ln_pio_output[i] = NULL;
+					}
+				}
+
+				io->fn = NULL;
+
+				delete io;
+				io = NULL;
+
+				iter = m_pvec_patchers_io->erase( iter );
+			}
+		}
+
+		m_pvec_patchers_io->clear();
+	}
+
+	delete m_pvec_patchers_io;
+	m_pvec_patchers_io = NULL;
+
+
+	return true;
+}
+
+objAttachPatchersIO_st* CViewAttach::patchers_io_get(const unsigned short idx) {
+	//__LOGT__( TAG, "patchers_io_get()" );
+	
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "patchers_io_get(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+
+	objAttachPatchersIO_st* io = NULL;
+
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* _io = (*iter);
+
+			if ( _io ) {
+				if ( _io->selected ) {
+					io = _io;
+					break;
+				}
+			}
+		} // for()
+	}
+
+
+	return io;
+}
+
+bool CViewAttach::patchers_io_is_selected(GdkRectangle rect, float x, float y) {
+	//__LOGT__( TAG, "patchers_io_is_selected()" );
+	
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "patchers_io_is_selected(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+
+	bool ret = false;
+	const int radius = DEFAULT_PATCHERS_IO_CIRCLE_RADIUS;
+
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		//__LOGT__( TAG, "patchers_io_is_selected(): Patchers IO size = %d", m_pvec_patchers_io->size() );
+
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* io = (*iter);
+
+			if ( io ) {
+				io->selected = false;
+
+				//__LOGT__( TAG, "patchers_io_is_selected(): idx = %d", io->idx );
+
+				if ( !ret ) {
+					// Left/Right-side, one patcher respectively
+					// Input
+					if ( ((int)x >= (io->input_point.x - radius)) &&
+							((int)x <= (io->input_point.x + radius)) &&
+							((int)y >= (io->input_point.y - radius)) &&
+							((int)y <= (io->input_point.y + radius)) ) {
+						io->selected = true;
+						m_direction = e_objAttachDirection_PATCHERS_IO_INPUT;
+						ret = true;
+						break;
+					}
+					// Output
+					else if ( ((int)x >= (io->output_point.x - radius)) &&
+							((int)x <= (io->output_point.x + radius)) &&
+							((int)y >= (io->output_point.y - radius)) &&
+							((int)y <= (io->output_point.y + radius)) ) {
+						io->selected = true;
+						m_direction = e_objAttachDirection_PATCHERS_IO_OUTPUT;
+						ret = true;
+						break;
+					}
+				}
+			}
+		} // for()
+
+		//get_str_direction( get_selected_direction() );
+	}
+
+
+	return ret;
+}
+
+bool CViewAttach::patchers_io_set_select(const unsigned short idx) {
+	//__LOGT__( TAG, "patchers_io_set_select()" );
+	
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "patchers_io_set_select(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+
+	bool ret = false;
+
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* io = (*iter);
+
+			if ( io ) {
+				if ( io->idx == idx ) {
+					io->selected = true;
+
+					ret = true;
+					break;
+				}
+			}
+		} // for()
+	}
+
+
+	return ret;
+}
+
+bool CViewAttach::patchers_io_get_selected(const unsigned short idx) {
+	//__LOGT__( TAG, "patchers_io_get_selected()" );
+	
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "patchers_io_get_selected(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+
+	bool ret = false;
+
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* io = (*iter);
+
+			if ( io ) {
+				if ( io->selected ) {
+					ret = true;
+					break;
+				}
+			}
+		} // for()
+	}
+
+
+	return ret;
+}
+
+bool CViewAttach::patchers_io_set_inout_xy(const unsigned short idx, float x, float y, bool in) {
+	//__LOGT__( TAG, "patchers_io_set_inout_xy()" );
+	
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "patchers_io_set_inout_xy(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+
+	bool ret = false;
+
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* io = (*iter);
+
+			if ( io ) {
+				if ( io->idx == idx ) {
+					if ( in ) {
+						io->input_x = x;
+						io->input_y = y;
+						//io->input_point.x = x;
+						//io->input_point.y = y;
+					}
+					else {
+						io->output_x = x;
+						io->output_y = y;
+						//io->output_point.x = x;
+						//io->output_point.y = y;
+					}
+
+					ret = true;
+					break;
+				}
+			}
+		} // for()
+	}
+
+
+	return ret;
+}
+
+bool CViewAttach::patchers_io_set_inout_xy(const unsigned short idx,
+		float in_x, float in_y, float out_x, float out_y) {
+	//__LOGT__( TAG, "patchers_io_set_inout_xy()" );
+	
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "patchers_io_set_inout_xy(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+
+	bool ret = false;
+
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* io = (*iter);
+
+			if ( io ) {
+				if ( io->idx == idx ) {
+					io->input_x = in_x;
+					io->input_y = in_y;
+					io->output_x = out_x;
+					io->output_y = out_y;
+
+					//io->input_point.x = in_x;
+					//io->input_point.y = in_y;
+					//io->output_point.x = out_x;
+					//io->output_point.y = out_y;
+
+					ret = true;
+					break;
+				}
+			}
+		} // for()
+	}
+
+
+	return ret;
+}
+
+bool CViewAttach::patchers_io_linking_detection(float* _ret_x, float* _ret_y) {
+	//__LOGT__( TAG, "patchers_io_linking_detection()" );
+	
+	return patchers_io_linking_detection( patchers_io_get_attached_list(),
+			0.f, 0.f, false, _ret_x, _ret_y );
+}
+
+bool CViewAttach::patchers_io_linking_detection(float x, float y, float* _ret_x, float* _ret_y) {
+	//__LOGT__( TAG, "patchers_io_linking_detection()" );
+	
+	return patchers_io_linking_detection( patchers_io_get_attached_list(),
+			x, y, true, _ret_x, _ret_y );
+}
+
+bool CViewAttach::patchers_io_linking_detection(std::vector<CViewAttach*>* attach,
+		float _x, float _y, bool use_xy, float* _ret_x, float* _ret_y) {
+	//__LOGT__( TAG, "patchers_io_linking_detection()" );
+	
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "patchers_io_linking_detection(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+	if ( !attach || attach->empty() ) {
+		__LOGT__( TAG, "patchers_io_linking_detection(): Attach Container == NULL or EMPTY" );
+		return false;
+	}
+
+	if ( attach->size() <= 1 ) {
+		__LOGT__( TAG, "patchers_io_linking_detection(): Attach Container size <= 1" );
+		return false;
+	}
+
+
+	bool ret = false;
+	float x = 0.f, y = 0.f;
+	objAttachPatchersIO_st* src_io = NULL;
+
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* io = (*iter);
+
+			if ( io && io->selected ) {
+				if ( get_selected_direction() == e_objAttachDirection_PATCHERS_IO_OUTPUT ) {
+
+					src_io = io;
+
+					if ( !use_xy ) {
+						//x = io->input_point.x;
+						//y = io->input_point.y;
+						x = io->input_x;
+						y = io->input_y;
+					}
+					else {
+						x = _x;
+						y = _y;
+					}
+				}
+				//else if ( get_selected_direction() == e_objAttachDirection_PATCHERS_IO_INPUT ) {
+				//	// NOPE
+				//}
+
+				break;
+			}
+		} // for()
+	}
+
+
+	// Attached-list
+	{
+		std::vector<CViewAttach*>::iterator iter;
+		for ( iter = attach->begin(); iter != attach->end(); ++iter ) {
+			CViewAttach* _attach = (*iter);
+
+			if ( _attach ) {
+				std::vector<objAttachPatchersIO_st*>* patchers_io = _attach->patchers_io_get_all();
+
+				if ( patchers_io && !patchers_io->empty() ) {
+					std::vector<objAttachPatchersIO_st*>::iterator iter_pio;
+					const int radius = DEFAULT_PATCHERS_IO_CIRCLE_RADIUS;
+
+					for ( iter_pio = patchers_io->begin(); iter_pio != patchers_io->end(); ++iter_pio ) {
+						objAttachPatchersIO_st* io = (*iter_pio);
+
+						if ( io && !io->selected ) {
+							// detect the linking point
+
+							//__LOGT__( TAG, "patchers_io_linking_detection(): src output x = %f, y = %f"
+							//			" | dst input x = %f, y = %f",
+							//			x, y, io->input_point.x, io->input_point.y );
+
+							// src output -> dst input
+							if ( get_selected_direction() == e_objAttachDirection_PATCHERS_IO_OUTPUT ) {
+								if ( (x >= (io->input_point.x - radius)) &&
+									(x <= (io->input_point.x + radius)) &&
+									(y >= (io->input_point.y - radius)) &&
+									(y <= (io->input_point.y + radius)) ) {
+									if ( !src_io ) {
+										__LOGT__( TAG, "patchers_io_linking_detection(): src input == NULL" );
+										ret = false;
+										break;
+									}
+
+									{
+										if ( !onTouchEvent_get_event() ) {
+											__LOGT__( TAG, "patchers_io_linking_detection(): Touch Event == NULL" );
+											return false;
+										}
+
+										// skip while in draggin
+										if ( onTouchEvent_get_event()->is_mouse_lbtn() ) {
+											return false;
+										}
+									}
+
+									__LOGT__( TAG, "patchers_io_linking_detection(): DETECTED: src output -> dst input" );
+
+									{
+										bool pio_ret = PATCHERS_IO_ADD_OUT_TO_IN( io, src_io );
+										//__LOGT__( TAG, "patchers_io_linking_detection(): added pos = %d, %s",
+										//			src_io->ln_pio_input_registered_idx, (pio_ret? "TRUE" : "FALSE") );
+
+										if ( !pio_ret ) {
+											ret = false;
+											break;
+										}
+									}
+									src_io->ln_pio_input = io;
+									src_io->linked_input = true;
+									//io->ln_pio_output = src_io;
+									io->linked_input = true;
+
+									if ( _ret_x ) *_ret_x = io->input_point.x;
+									if ( _ret_y ) *_ret_y = io->input_point.y;
+
+									ret = true;
+									break;
+								}
+								else {
+									{
+										bool pio_ret = PATCHERS_IO_DEL_OUT_FROM_IN( io, src_io );
+										//__LOGT__( TAG, "patchers_io_linking_detection(): deleted pos = %d, %s",
+										//			src_io->ln_pio_input_registered_idx, (pio_ret? "TRUE" : "FALSE") );
+
+										if ( !pio_ret ) {
+											ret = false;
+											break;
+										}
+									}
+									src_io->ln_pio_input = NULL;
+									src_io->linked_input = false;
+									//io->ln_pio_output = NULL;
+									src_io->ln_pio_input_registered_idx = -1;
+									io->linked_input = false;
+								}
+							}
+							/*
+							// src input -> dst output
+							else if ( get_selected_direction() == e_objAttachDirection_PATCHERS_IO_INPUT ) {
+								// NOPE
+								if ( (x >= (io->output_point.x - radius)) &&
+									(x <= (io->output_point.x + radius)) &&
+									(y >= (io->output_point.y - radius)) &&
+									(y <= (io->output_point.y + radius)) ) {
+									if ( !src_io ) {
+										__LOGT__( TAG, "patchers_io_linking_detection(): src out == NULL" );
+										ret = false;
+										break;
+									}
+
+									{
+										if ( !onTouchEvent_get_event() ) {
+											__LOGT__( TAG, "patchers_io_linking_detection(): Touch Event == NULL" );
+											return false;
+										}
+
+										// skip while in draggin
+										if ( onTouchEvent_get_event()->is_mouse_lbtn() ) {
+											return false;
+										}
+									}
+
+									__LOGT__( TAG, "patchers_io_linking_detection(): DETECTED: src input -> dst output" );
+
+									src_io->ln_pio_output = io;
+									src_io->linked_output = true;
+									io->ln_pio_input = src_io;
+									io->linked_output = true;
+
+									if ( _ret_x ) *_ret_x = io->output_point.x;
+									if ( _ret_y ) *_ret_y = io->output_point.y;
+
+									ret = true;
+									break;
+								}
+								else {
+									src_io->ln_pio_output = NULL;
+									src_io->linked_output = false;
+									io->ln_pio_input = NULL;
+									io->linked_output = false;
+								}
+							}
+							*/
+						}
+					}
+				}
+
+				if ( ret ) break;
+			}
+		} // for()
+	} // attached-list
+
+
+	return ret;
+}
+
+void CViewAttach::patchers_io_info(void) {
+	//__LOGT__( TAG, "patchers_io_info()" );
+	
+	if ( !get_selected() )
+		return;
+
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		//__LOGT__( TAG, "patchers_io_info(): size = %d", m_pvec_patchers_io->size() );
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* io = (*iter);
+
+			if ( io ) {
+				__LOGT__( TAG, "patchers_io_info(): {" );
+				__LOGT__( TAG, "patchers_io_info():    uuid = %s, text = %s", get_uuid_str(), get_text() );
+				__LOGT__( TAG, "patchers_io_info():    src output -> dst input uuid = %s", io->ln_pio_input->uuid );
+
+				if ( io->ln_pio_output ) {
+					__LOGT__( TAG, "patchers_io_info():    dst output -> src input {" );
+					for ( int i = 0; i < DEFAULT_PATCHERS_IO_NUM_OF_INOUT_LINKAGE; i++ ) {
+						if ( io->ln_pio_output[i] ) {
+							__LOGT__( TAG, "patchers_io_info():       idx = %d, uuid = %s",
+										io->ln_pio_output[i]->ln_pio_input_registered_idx,
+										io->ln_pio_output[i]->uuid );
+						}
+					}
+					__LOGT__( TAG, "patchers_io_info():    }" );
+					__LOGT__( TAG, "patchers_io_info(): }" );
+				}
+			}
+		} // for()
+	}
+}
+
+void CViewAttach::draw_patchers_io(canvas_t* canvas) {
+	//__LOGT__( TAG, "draw_patchers_io()" );
+	
+	if ( !canvas ) {
+		__LOGT__( TAG, "draw_patchers_io(): canvas_t == NULL" );
+		return;
+	}
+
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "draw_patchers_io(): Patchers IO Container == NULL" );
+		return;
+	}
+
+
+	//
+	// Draw a circle for respective direction as following:
+	//  - Right-side
+	//
+	//	                    *
+	//		+-------------+ *
+	//		| .         . | *
+	//		|   .     .   | *
+	//		|      .      | *
+	//		|    .   .    | *
+	//		| .         . | *
+	//		+-------------+ *
+	//	                    *
+	//
+
+	{
+		int x = 0;
+		int y = m_rect.y;
+		const int radius = DEFAULT_PATCHERS_IO_CIRCLE_RADIUS;
+
+		{
+			if ( !patchers_io_get_show() ) {
+				x = ( m_rect.x + m_rect.width );
+
+				// Left/Right-side, one patcher respectively
+				// Updates link(input/output) hilum position
+				if ( !m_pvec_patchers_io->empty() ) {
+					std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+					for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+						objAttachPatchersIO_st* io = (*iter);
+
+						if ( io ) {
+							// Padding
+							y += (DEFAULT_PATCHERS_IO_PADDING_HEIGHT << 1);
+
+							// Input
+							x = m_rect.x;
+							io->input_point.x = (float)x;
+							io->input_point.y = (float)y;
+
+
+							// Output
+							x = ( m_rect.x + m_rect.width );
+							io->output_point.x = (float)x;
+							io->output_point.y = (float)y;
+						}
+					} // for()
+				}
+
+				return;
+			}
+		}
+
+
+		x = 0;
+		y = m_rect.y;
+
+		cairo_save( canvas );
+		{
+			// Paint
+			draw_paint_color( canvas, true, e_objAttachPaintColor_BLUE );
+
+			x = ( m_rect.x + m_rect.width );
+
+			// Left/Right-side, one patcher respectively
+			// Updates link(input/output) hilum position
+			if ( !m_pvec_patchers_io->empty() ) {
+				std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+				for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+					objAttachPatchersIO_st* io = (*iter);
+
+					if ( io ) {
+						// Padding
+						y += (DEFAULT_PATCHERS_IO_PADDING_HEIGHT << 1);
+
+						// Input
+						x = m_rect.x;
+						draw_circle( canvas, x, y, radius );
+						io->input_point.x = (float)x;
+						io->input_point.y = (float)y;
+
+
+						// Output
+						x = ( m_rect.x + m_rect.width );
+						draw_circle( canvas, x, y, radius );
+						io->output_point.x = (float)x;
+						io->output_point.y = (float)y;
+
+						cairo_stroke( canvas );
+						// draws the outline of the circle
+						//cairo_stroke_preserve( canvas );
+					}
+				} // for()
+			}
+
+
+			{
+				draw_paint_color( canvas, true, e_objAttachPaintColor_GREEN );
+				cairo_set_line_width( canvas, 3.0f );
+				cairo_set_line_cap( canvas, CAIRO_LINE_CAP_SQUARE );
+
+				if ( !m_pvec_patchers_io->empty() ) {
+					std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+					for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+						objAttachPatchersIO_st* io = (*iter);
+
+						if ( io ) {
+							// Draw a linking line
+							{
+								if ( get_selected_direction() == e_objAttachDirection_PATCHERS_IO_OUTPUT ) {
+									// link lines: src output -> dst input
+									//
+
+									{
+										float _ret_x = 0.f, _ret_y = 0.f;
+										if ( patchers_io_linking_detection(
+													//io->input_point.x, io->input_point.y,
+													io->input_x, io->input_y,
+													&_ret_x, &_ret_y) ) {
+											io->linked_output = true;
+											//io->input_point.x = _ret_x;
+											//io->input_point.y = _ret_y;
+										}
+										else {
+											io->linked_output = false;
+											io->ln_pio_input = NULL;
+										}
+									}
+								}
+								else if ( get_selected_direction() == e_objAttachDirection_PATCHERS_IO_INPUT ) {
+									// link lines: src input -> dst output
+									// NOPE
+
+									/*
+									{
+										if ( ... ) {
+											io->linked_input = true;
+										}
+										else {
+											io->linked_input = false;
+											io->ln_pio_output = NULL;
+										}
+									}
+									*/
+								}
+								else {
+									// src output -> dst input
+									io->input_x = io->output_point.x;
+									io->input_y = io->output_point.y;
+
+									// src input -> dst output
+									io->output_x = io->input_point.x;
+									io->output_y = io->input_point.y;
+								}
+
+
+								// Output
+								//cairo_move_to( canvas, io->output_point.x, io->output_point.y );
+								//cairo_line_to( canvas, io->input_point.x, io->input_point.y );
+								//cairo_stroke( canvas );
+
+
+								if ( get_selected() ) {
+									io->drawn_input = false;
+									io->drawn_output = false;
+								}
+
+								// draw a linking lines
+								// src output -> dst input
+								if ( (get_selected_direction() == e_objAttachDirection_PATCHERS_IO_OUTPUT) ) {
+									//|| (get_selected_direction() == e_objAttachDirection_PATCHERS_IO_INPUT) ) {
+									cairo_move_to( canvas, io->output_point.x, io->output_point.y );
+									cairo_line_to( canvas, io->input_x, io->input_y );
+								}
+								else {
+									for ( int i = 0; i < DEFAULT_PATCHERS_IO_NUM_OF_INOUT_LINKAGE; i++ ) {
+										if ( io->ln_pio_input && io->ln_pio_output[i] ) {
+											if ( !io->drawn_input ) {
+												// Output
+												//cairo_move_to( canvas, io->output_point.x, io->output_point.y );
+												//cairo_line_to( canvas,
+												//				io->ln_pio_input->input_point.x,
+												//				io->ln_pio_input->input_point.y );
+												//cairo_stroke( canvas );
+												draw_curved_line( canvas, io->output_point.x, io->output_point.y,
+																io->ln_pio_input->input_point.x,
+																io->ln_pio_input->input_point.y );
+
+												io->ln_pio_input->drawn_output = true;
+											}
+
+//! ---DELETE--- [
+											/*
+											if ( !io->ln_pio_output[i]->drawn_output ) {
+												// Input
+												//cairo_move_to( canvas, io->input_point.x, io->input_point.y );
+												//cairo_line_to( canvas,
+												//				io->ln_pio_output[i]->output_point.x,
+												//				io->ln_pio_output[i]->output_point.y );
+												//cairo_stroke( canvas );
+												draw_curved_line( canvas, io->input_point.x, io->input_point.y,
+																io->ln_pio_output[i]->output_point.x,
+																io->ln_pio_output[i]->output_point.y );
+
+												io->ln_pio_output[i]->drawn_input = true;
+											}
+											*/
+//! ---DELETE--- ]
+										}
+										else {
+											// src output -> dst input
+											if ( io->ln_pio_input ) {
+												if ( !io->drawn_input ) {
+													// Output
+													cairo_move_to( canvas, io->output_point.x, io->output_point.y );
+													cairo_line_to( canvas,
+																	io->ln_pio_input->input_point.x,
+																	io->ln_pio_input->input_point.y );
+													//draw_curved_line( canvas, io->output_point.x, io->output_point.y,
+													//				io->ln_pio_input->input_point.x,
+													//				io->ln_pio_input->input_point.y );
+
+													io->ln_pio_input->drawn_output = true;
+												}
+											}
+//! ---DELETE--- [
+											/*
+											else {
+												// Output
+												cairo_move_to( canvas, io->output_point.x, io->output_point.y );
+												cairo_line_to( canvas, io->input_x, io->input_y );
+												//cairo_line_to( canvas, io->input_point.x, io->input_point.y );
+												////cairo_line_to( canvas,
+												////					io->ln_pio_input->input_point.x,
+												////					io->ln_pio_input->input_point.y );
+											}
+											*/
+											/*
+											// src input -> dst output
+											else if ( io->ln_pio_output[i] ) {
+												if ( !io->ln_pio_output[i]->drawn_output ) {
+													// Input
+													//cairo_move_to( canvas, io->input_point.x, io->input_point.y );
+													//cairo_line_to( canvas,
+													//				io->ln_pio_output[i]->output_point.x,
+													//				io->ln_pio_output[i]->output_point.y );
+													draw_curved_line( canvas, io->input_point.x, io->input_point.y,
+																	io->ln_pio_output[i]->output_point.x,
+																	io->ln_pio_output[i]->output_point.y );
+
+													io->ln_pio_output[i]->drawn_input = true;
+												}
+											}
+											*/
+											//else {
+											//	cairo_move_to( canvas, io->output_point.x, io->output_point.y );
+											//	cairo_line_to( canvas, io->input_x, io->input_y );
+											//}
+//! ---DELETE--- ]
+										}
+									} // for()
+								}
+
+								io->drawn_input = false;
+								io->drawn_output = false;
+
+								cairo_stroke( canvas );
+								//cairo_stroke_preserve( canvas );
+							}
+						}
+					} // for()
+				}
+			}
+
+
+			// draws the outline of the circle
+			//cairo_stroke_preserve( canvas );
+		}
+		cairo_restore( canvas );
+	}
+}
+
+bool CViewAttach::__test_patchers_io_add(unsigned short patchers) {
+	//__LOGT__( TAG, "__test_patchers_io_add()" );
+
+	for ( unsigned short i = 0; i < patchers; i++ ) {
+		objAttachPatchersIO_st* io = new objAttachPatchersIO_st;
+
+		if ( !io ) {
+			return false;
+		}
+
+		io->idx = i;
+		memset( (void*)&io->uuid, 0x00, sizeof(io->uuid) );
+		memset( (void*)&io->ln_pio_input_uuid, 0x00, sizeof(io->ln_pio_input_uuid) );
+		snprintf( io->uuid, sizeof(io->uuid), "%s", get_uuid_str() );
+		io->selected = false;
+		io->linked_input = false;
+		io->linked_output = false;
+		io->drawn_input = false;
+		io->drawn_output = false;
+		{
+			/*
+			int x = 0;
+			int y = m_rect.y;
+
+			// Left/Right-side, one patcher respectively
+			// Padding
+			y += (DEFAULT_PATCHERS_IO_PADDING_HEIGHT << 1);
+
+			// Left-Top
+			x = ( m_rect.x - DEFAULT_PATCHERS_IO_PADDING_WIDTH );
+			io->input_point.x = x;
+			io->input_point.y = y;
+
+			// Right-Top
+			x = ( m_rect.x + m_rect.width ) + DEFAULT_PATCHERS_IO_PADDING_WIDTH;
+			io->output_point.x = x;
+			io->output_point.y = y;
+			*/
+
+			io->input_point.x = 0.f;
+			io->input_point.y = 0.f;
+			io->output_point.x = 0.f;
+			io->output_point.y = 0.f;
+		}
+		io->input_val1 = 0;
+		io->input_val2 = 0;
+		io->input_val3 = 0;
+		io->output_val1 = 0;
+		io->output_val2 = 0;
+		io->output_val3 = 0;
+		io->input_x = 0.f;
+		io->input_y = 0.f;
+		io->output_x = 0.f;
+		io->output_y = 0.f;
+		io->ln_pio_input = NULL;
+		//io->ln_pio_output = NULL;
+		{
+			for ( int i = 0; i < DEFAULT_PATCHERS_IO_NUM_OF_INOUT_LINKAGE; i++ ) {
+				io->ln_pio_output[i] = NULL;
+			}
+		}
+		io->ln_pio_input_registered_idx = -1;
+		//io->ln_pio_output_registered_idx = -1;
+		io->fn = NULL;
+
+		if ( !patchers_io_add(io) )
+			return false;
+	}
+
+
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "__test_patchers_io_add(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+
+	/*
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* io = (*iter);
+
+			if ( io ) {
+				__LOGT__( TAG, "__test_patchers_io_add(): uuid = %s", io->uuid );
+				__LOGT__( TAG, "__test_patchers_io_add(): idx = %d", io->idx );
+				__LOGT__( TAG, "__test_patchers_io_add(): selected = %s",
+							(io->selected? "TRUE" : "FALSE") );
+				__LOGT__( TAG, "__test_patchers_io_add(): linked input = %s",
+							(io->linked_input? "TRUE" : "FALSE") );
+				__LOGT__( TAG, "__test_patchers_io_add(): linked output = %s",
+							(io->linked_output? "TRUE" : "FALSE") );
+				__LOGT__( TAG, "__test_patchers_io_add(): input_point x = %f, y = %f",
+							io->input_point.x, io->input_point.y );
+				__LOGT__( TAG, "__test_patchers_io_add(): output_point x = %f, y = %f",
+							io->output_point.x, io->output_point.y );
+				__LOGT__( TAG, "__test_patchers_io_add(): input_val1 = %d", io->input_val1 );
+				__LOGT__( TAG, "__test_patchers_io_add(): input_val2 = %d", io->input_val2 );
+				__LOGT__( TAG, "__test_patchers_io_add(): input_val3 = %d", io->input_val3 );
+				__LOGT__( TAG, "__test_patchers_io_add(): output_val1 = %d", io->output_val1 );
+				__LOGT__( TAG, "__test_patchers_io_add(): output_val2 = %d", io->output_val2 );
+				__LOGT__( TAG, "__test_patchers_io_add(): output_val3 = %d", io->output_val3 );
+				//__LOGT__( TAG, "__test_patchers_io_add(): input_x = %f", io->input_x );
+				//__LOGT__( TAG, "__test_patchers_io_add(): input_y = %f", io->input_y );
+				//__LOGT__( TAG, "__test_patchers_io_add(): output_x = %f", io->output_x );
+				//__LOGT__( TAG, "__test_patchers_io_add(): output_y = %f", io->output_y );
+				//io->fn;
+			}
+		} // for()
+	}
+	*/
+
+
+	return true;
+}
+
+/* ---DELETE---
+bool CViewAttach::__test_patchers_io_link(const unsigned short src_idx,
+		CViewAttach* dst, const unsigned short dst_idx, bool dst_in) const {
+	//__LOGT__( TAG, "__test_patchers_io_link()" );
+	
+	if ( !m_pvec_patchers_io ) {
+		__LOGT__( TAG, "__test_patchers_io_link(): Patchers IO Container == NULL" );
+		return false;
+	}
+
+	if ( !dst ) {
+		__LOGT__( TAG, "__test_patchers_io_link(): target object == NULL" );
+		return false;
+	}
+
+
+	bool ret = false;
+	objAttachPatchersIO_st* dst_io = dst->patchers_io_get( dst_idx );
+
+	if ( !dst_io ) {
+		__LOGT__( TAG, "__test_patchers_io_link(): target Patchers IO == NULL" );
+		return false;
+	}
+
+	if ( !m_pvec_patchers_io->empty() ) {
+		std::vector<objAttachPatchersIO_st*>::iterator iter;
+
+		for ( iter = m_pvec_patchers_io->begin(); iter != m_pvec_patchers_io->end(); ++iter ) {
+			objAttachPatchersIO_st* io = (*iter);
+
+			if ( io ) {
+				if ( io->idx == src_idx ) {
+					if ( dst_in ) {
+						//        +----+                         +----+
+						// -(IN)->|obj1|-(OUT)->          -(IN)->|obj2|-(OUT)->
+						//        +----+   |                 ^   +----+
+						//                 |                 |
+						//                 |                 |
+						//                 +-----------------+
+
+						//io->output_x = dst_io->input_x;
+						//io->output_y = dst_io->input_y;
+						io->output_point.x = dst_io->input_point.x;
+						io->output_point.y = dst_io->input_point.y;
+						io->linked_output = true;
+					}
+					else {
+						// NOPE
+						//
+						//        +----+                         +----+
+						// -(IN)->|obj1|-(OUT)->          -(IN)->|obj2|-(OUT)->
+						//        +----+   |                     +----+   ^
+						//                 |                              |
+						//                 |                              |
+						//                 +------------------------------+
+						
+						//io->output_x = dst_io->output_x;
+						//io->output_y = dst_io->output_y;
+						//io->output_point.x = dst_io->output_point.x;
+						//io->output_point.y = dst_io->output_point.y;
+						//io->linked_input = true;
+					}
+
+
+					ret = true;
+					break;
+				}
+			}
+		}
+	}
+
+
+	return ret;
+}
+*/
+
+
 
 // --------------------
 
@@ -2701,6 +4282,11 @@ void CViewAttach::draw_obj(canvas_t* canvas) {
 			}
 		}
 
+		// Patchers IO
+		{
+			draw_patchers_io( canvas );
+		}
+
 
 		// Clear previous path
 		//cairo_new_sub_path( canvas );
@@ -2709,10 +4295,20 @@ void CViewAttach::draw_obj(canvas_t* canvas) {
 		// Object rectangle
 		cairo_save( canvas );
 		{
-			// Paint
-			draw_paint_color( canvas, true, e_objAttachPaintColor_RED );
+			if ( get_text_show_boundary() ) {
+				// Draw boundary
+				if ( (get_obj_type() == e_objAttachType_TEXT) && !get_has_image() ) {
+					// Paint
+					draw_paint_color( canvas, true, e_objAttachPaintColor_DKGRAY );
+					draw_rectangle_boundary( canvas, m_rect );
+					cairo_stroke( canvas );
+				}
+			}
 
 			if ( get_selected() ) {
+				// Paint
+				draw_paint_color( canvas, true, e_objAttachPaintColor_RED );
+
 				// Draw rectangle
 				//gdk_cairo_rectangle( canvas, &m_rect );
 				{
@@ -2755,64 +4351,43 @@ void CViewAttach::draw_obj(canvas_t* canvas) {
 				//cairo_new_sub_path( canvas );
 
 				// Left-Top
-				draw_circle( canvas, x, y, radius );
+				draw_drag_area( canvas, x, y, radius );
 				// Right-Top
 				x = ( m_rect.x + m_rect.width );
-				draw_circle( canvas, x, y, radius );
+				draw_drag_area( canvas, x, y, radius );
 				// Center-Top
 				x = ( m_rect.x + (m_rect.width >> 1) );
-				draw_circle( canvas, x, y, radius );
+				draw_drag_area( canvas, x, y, radius );
 
 				x = m_rect.x;
 				y = ( m_rect.y + m_rect.height );
 
 				// Left-Bottom
-				draw_circle( canvas, x, y, radius );
+				draw_drag_area( canvas, x, y, radius );
 				// Right-Bottom
 				x = ( m_rect.x + m_rect.width );
-				draw_circle( canvas, x, y, radius );
+				draw_drag_area( canvas, x, y, radius );
 				// Center-Bottom
 				x = ( m_rect.x + (m_rect.width >> 1) );
-				draw_circle( canvas, x, y, radius );
+				draw_drag_area( canvas, x, y, radius );
 
 				x = m_rect.x;
 				y = ( m_rect.y + (m_rect.height >> 1) );
 
 				// Left,Right-Center
-				draw_circle( canvas, x, y, radius );
+				draw_drag_area( canvas, x, y, radius );
 				x = ( m_rect.x + m_rect.width );
-				draw_circle( canvas, x, y, radius );
+				draw_drag_area( canvas, x, y, radius );
 
 
 
+				cairo_stroke( canvas );
 				// draws the outline of the circle
-				cairo_stroke_preserve( canvas );
+				//cairo_stroke_preserve( canvas );
 			}
 		}
 		cairo_restore( canvas );
 	}
-
-/*
-	{
-		const double row_width = 50.0f;
-		const double row_height = 20.0f;
-		//GdkRectangle rect;
-
-		//rect.x = 0;
-		//rect.y = 30;
-		//rect.width = 100;
-		//rect.height = 100;
-		//gdk_cairo_rectangle( canvas, &rect );
-
-
-		cairo_set_source_rgb( canvas, 255, 0, 0 );
-		cairo_set_line_width( canvas, 3.0f );
-		cairo_set_line_cap( canvas, CAIRO_LINE_CAP_SQUARE );
-		cairo_move_to( canvas, 0.0f, row_height );
-		cairo_line_to( canvas, (double)get_width(), row_height );
-		cairo_stroke( canvas );
-	}
-*/
 }
 // ---------------------------------------------------------------
 
@@ -2821,101 +4396,6 @@ void CViewAttach::draw_obj(canvas_t* canvas) {
 //! Implementation
 // ---------------------------------------------------------------
 // Global variable
-
-namespace g_Func {
-} // namespace g_Func
-
-namespace g_FuncSignalHandler {
-} // namespace g_FuncSignalHandler
-
-
-#if 0
-// class CASyncTask [
-CAsyncTask::CAsyncTask(void) : TAG("CAsyncTask") {
-	__LOGT__( TAG, "CAsyncTask()" );
-
-	m_pSpinner = NULL;
-}
-
-CAsyncTask::~CAsyncTask(void) {
-	__LOGT__( TAG, "~CAsyncTask()" );
-}
-
-void* CAsyncTask::inBackground(std::vector<void*>* pvecVal) {
-	__LOGT__( TAG, "inBackground()" );
-
-	// TEST
-	/*
-	for ( int i = 0; i < 10; i++ ) {
-		__LOGT__( TAG, "inBackground(): i = %d", i );
-		update( (void*)"#---update---#" );
-	}
-	__LOGT__( TAG, "" );
-
-	if ( pvecVal && (pvecVal->size() > 0) ) {
-		std::vector<void*>::iterator iter;
-		//for ( iter = pvecVal->begin(); iter != pvecVal->end(); iter++ ) {
-		//	__LOGT__( TAG, "inBackground(): str -> %s", (char*)(*iter) );
-		//}
-
-		__LOGT__( TAG, "inBackground(): str[0] -> %s", (char*)(*pvecVal)[0] );
-		__LOGT__( TAG, "inBackground(): str[1] -> %s", (char*)(*pvecVal)[1] );
-		__LOGT__( TAG, "inBackground(): str[2] -> %d", (int)(*pvecVal)[2] );
-		__LOGT__( TAG, "inBackground(): str[3] -> %s", (char*)(*pvecVal)[3] );
-	}
-
-
-	//return NULL;
-	return ((void*)true);
-	*/
-
-
-
-	return ((void*)true);
-}
-
-void CAsyncTask::progressUpdate(void* pVal) {
-	__LOGT__( TAG, "progressUpdate()" );
-
-	char* pStr = reinterpret_cast<char*>(pVal);
-	if ( pStr )
-		__LOGT__( TAG, "%s", pStr );
-}
-
-void CAsyncTask::postExecute(void* pResult, void* pExtraVal) {
-	__LOGT__( TAG, "postExecute()" );
-
-	int result = reinterpret_cast<int>(pResult);
-	__LOGT__( TAG, "postExecute(): result = %s", (result? "TRUE" : "FALSE") );
-
-	if ( pExtraVal ) {
-		GtkWidget* pDlg = NULL;
-		pDlg = GTK_WIDGET( pExtraVal );
-		
-		//! DO NOT USE THE FOLLOWING
-		/*
-		//GtkSpinner* pSpinner = ((Widgets_st*)pExtraVal)->pSpinner;
-		if ( m_pSpinner ) {
-			__LOGT__( TAG, "postExecute(): Stop Spinner" );
-			gtk_spinner_stop( m_pSpinner );
-			m_pSpinner = NULL;
-		}
-
-		if ( pDlg ) {
-			__LOGT__( TAG, "postExecute(): Destroy Dialog" );
-			gtk_widget_hide( pDlg );
-			gtk_widget_destroy( pDlg );
-			pDlg = NULL;
-		}
-		*/
-
-		if ( pDlg ) {
-			__LOGT__( TAG, "postExecute(): Send a signal to Destroy Dialog" );
-			gtk_dialog_response( GTK_DIALOG(pDlg), GTK_RESPONSE_NONE );
-		}
-	}
-}
-// class CASyncTask ]
-#endif
+//
 // ---------------------------------------------------------------
 
