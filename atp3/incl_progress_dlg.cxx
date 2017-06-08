@@ -5,7 +5,7 @@ Author:		Ho-Jung Kim (godmode2k@hotmail.com)
 Date:		Since Dec 2, 2014
 Filename:	incl_progress_dlg.cxx
 
-Last modified: Jan 20, 2015
+Last modified: Jun 8, 2017
 License:
 
 *
@@ -47,6 +47,48 @@ TODO:
 
 //! Definition
 // ---------------------------------------------------------------
+/*
+// Mutex Lock
+static GMutex* g_mutex_progress_dlg = NULL;
+{
+	//g_assert( g_mutex_progress_dlg == NULL );
+	//g_mutex_progress_dlg = g_mutex_new();
+	
+	if ( g_mutex_progress_dlg == NULL )
+		g_mutex_progress_dlg = g_mutex_new();
+
+	if ( g_mutex_trylock(g_mutex_progress_dlg) )
+		__LOGT__( TAG, "...(): mutex lock [TRUE]" );
+	else {
+		__LOGT__( TAG, "...(): mutex lock: already locked by another thread" );
+		return;
+	}
+}
+
+// Mutex Unlock
+{
+	if ( g_mutex_progress_dlg != NULL )
+		__LOGT__( TAG, "...(): mutex unlock" );
+		g_mutex_unlock( g_mutex_progress_dlg );
+}
+
+
+// GTK thread
+//
+// https://developer.gnome.org/gdk2/2.24/gdk2-Threads.html
+// Example: gtk-thread.c
+// Author: Erik Mouw
+//
+//
+// NOTE: g_thread_init (NULL);
+//
+// gdk_threads_init(); // no "g_thread_init(NULL)" here
+// gdk_threads_enter(); // Get GTK thread lock
+// {
+//     ... gtk api ...
+// }
+// gdk_threads_leave(); // Release GTK thread lock
+*/
 // ---------------------------------------------------------------
 
 
@@ -84,13 +126,22 @@ void CProgress_dlg::task_in_thread(void) {
 	int pos = 0;
 	int percent = 0;
 
+	// GTK thread
+	gdk_threads_init();
+
 	for ( pos = 0; pos <= total; pos++ ) {
 		percent = set_progress( pos, total );
 
 		//snprintf( buf_progress, sizeof(buf_progress), "%d%% (%d/%d), %f",
 		//		percent, pos, total, get_progress_fraction() );
 		snprintf( buf_progress, sizeof(buf_progress), "%d%% (%d/%d)", percent, pos, total );
-		set_progress_msg( buf_progress );
+
+		// GTK thread
+		gdk_threads_enter(); // Get GTK thread lock
+		{
+			set_progress_msg( buf_progress );
+		}
+		gdk_threads_leave(); // Release GTK thread lock
 
 		if ( get_cancel_state() ) break;
 
