@@ -277,10 +277,13 @@ namespace g_UTIL {
 		//bool get_remote_ip_port(const char* hosting, char* _ipaddr, int* _port);
 	}  // namespace NET
 
+#ifdef _WINDOWS
+#else
 	// htonf, ntohf
 	// Source: https://beej.us/guide/bgnet/examples/pack.c
 	uint32_t htonf(float f);
 	float ntohf(uint32_t p);
+#endif
 } // namespace g_UTIL
 
 #ifdef __cplusplus
