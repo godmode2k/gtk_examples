@@ -57,6 +57,10 @@ TODO:
 #include "CNetSockLib.h"
 
 //#include "util/CUtil_DEF.h"
+
+#ifdef _WINDOWS
+#pragma comment(lib, "ws2_32.lib")
+#endif
 // ---------------------------------------------------------------
 
 
@@ -170,6 +174,261 @@ void CNetSockLib::__release(void) {
 
 
 
+//! Handle I/O
+// ---------------------------------------------------------------
+CHandleIO::CHandleIO(void) : TAG("CHandleIO") {
+	__LOGT__( TAG, "CHandleIO()" );
+}
+
+CHandleIO::~CHandleIO(void) {
+	__LOGT__( TAG, "~CHandleIO()" );
+}
+
+#ifdef _WINDOWS
+int CHandleIO::write_int(const SOCKET socket, const int val) {
+#else
+int CHandleIO::write_int(const int socket, const int val) {
+#endif
+	uint32_t _val = htonl( val );
+	int bytes = send(socket, (char*)&_val, sizeof(_val), 0);
+
+	if (bytes <= 0) {
+		//__LOGT__( TAG, "write_int(): %d\n", bytes );
+		return -1;
+	}
+
+	return bytes;
+}
+
+#ifdef _WINDOWS
+int CHandleIO::write_float(const SOCKET socket, const float val) {
+	uint32_t _val = htonf( val );
+#else
+int CHandleIO::write_float(const int socket, const float val) {
+	uint32_t _val = g_UTIL::htonf( val );
+#endif
+	int bytes = send(socket, (char*)&_val, sizeof(_val), 0);
+
+	if (bytes <= 0) {
+		//__LOGT__( TAG, "write_float(): %d\n", bytes );
+		return -1;
+	}
+
+	return bytes;
+}
+
+#ifdef _WINDOWS
+int CHandleIO::write_bool(const SOCKET socket, const unsigned char val) {
+#else
+int CHandleIO::write_bool(const int socket, const unsigned char val) {
+#endif
+	unsigned char _val = val;
+	int bytes = send(socket, (char*)&_val, sizeof(_val), 0);
+
+	if (bytes <= 0) {
+		//__LOGT__( TAG, "write_bool(): %d\n", bytes );
+		return -1;
+	}
+
+	return bytes;
+}
+
+#ifdef _WINDOWS
+int CHandleIO::write(const SOCKET socket, const unsigned char* buffer, const int len){
+#else
+int CHandleIO::write(const int socket, const unsigned char* buffer, const int len){
+#endif
+	int bytes = send(socket, (char*)buffer, len, 0);
+	if (bytes <= 0) {
+		//__LOGT__( TAG, "write(): %d\n", bytes );
+		return -1;
+	}
+
+	return bytes;
+}
+
+#ifdef _WINDOWS
+int CHandleIO::read_int(const SOCKET socket, int* val) {
+#else
+int CHandleIO::read_int(const int socket, int* val) {
+#endif
+	uint32_t _val;
+#ifdef _WINDOWS
+	int ret = recv(socket, (char*)&_val, sizeof(_val), MSG_WAITALL);
+#else
+	int ret = recv(socket, (char*)&_val, sizeof(_val), 0 );
+#endif
+
+	*val = (int)ntohl((uint32_t)_val);
+	return ret;
+}
+
+#ifdef _WINDOWS
+int CHandleIO::read_float(const SOCKET socket, float* val) {
+#else
+int CHandleIO::read_float(const int socket, float* val) {
+#endif
+	uint32_t _val;
+#ifdef _WINDOWS
+	int ret = recv(socket, (char*)&_val, sizeof(_val), MSG_WAITALL);
+	*val = (float)ntohf((uint32_t)_val);
+#else
+	int ret = recv(socket, (char*)&_val, sizeof(_val), 0 );
+	*val = (float)g_UTIL::ntohf((uint32_t)_val);
+#endif
+
+	return ret;
+}
+
+#ifdef _WINDOWS
+int CHandleIO::read_bool(const SOCKET socket, unsigned char* val) {
+#else
+int CHandleIO::read_bool(const int socket, unsigned char* val) {
+#endif
+	unsigned char _val;
+#ifdef _WINDOWS
+	int ret = recv(socket, (char*)&_val, sizeof(_val), MSG_WAITALL);
+#else
+	int ret = recv(socket, (char*)&_val, sizeof(_val), 0 );
+#endif
+
+	*val = (unsigned char)_val;
+
+	return ret;
+}
+
+#ifdef _WINDOWS
+int CHandleIO::read(const SOCKET socket, unsigned char* buffer, const int len) {
+#else
+int CHandleIO::read(const int socket, unsigned char* buffer, const int len) {
+#endif
+	return read(socket, buffer, len, 0);
+}
+
+#ifdef _WINDOWS
+int CHandleIO::read(const SOCKET socket, unsigned char* buffer, const int len, const int read_len) {
+#else
+int CHandleIO::read(const int socket, unsigned char* buffer, const int len, const int read_len) {
+#endif
+	char recv_buffer[1024] = { 0, };
+	int recv_bytes = 0;
+	int recv_bytes_total = 0;
+
+	//memset(recv_buffer, 0x00, sizeof(recv_buffer));
+	memset(buffer, 0x00, len);
+
+	if (read_len > 0) {
+		while (read_len > recv_bytes_total) {
+			memset(recv_buffer, 0x00, sizeof(recv_buffer));
+
+			//recv_bytes = recv(socket, (char*)buffer + recv_bytes_total, read_len, 0);
+
+			recv_bytes = recv(socket, (char*)buffer + recv_bytes_total, read_len - recv_bytes_total, 0);
+			//recv_bytes = recv(socket, recv_buffer, sizeof(recv_buffer), 0);
+
+			if (recv_bytes <= 0) break;
+			//memcpy(buffer + recv_bytes_total, recv_buffer, recv_bytes);
+
+			recv_bytes_total += recv_bytes;
+		}
+	}
+	else {
+		while (1) {
+			memset(recv_buffer, 0x00, sizeof(recv_buffer));
+
+			//recv_bytes = recv(socket, (char*)buffer + recv_bytes_total, len, 0);
+			recv_bytes = recv(socket, recv_buffer, sizeof(recv_buffer), 0);
+
+			if (recv_bytes <= 0) break;
+			memcpy(buffer + recv_bytes_total, recv_buffer, recv_bytes);
+
+			recv_bytes_total += recv_bytes;
+		}
+	}
+
+	//buffer[recv_bytes_total] = '\0';
+
+	//__LOGT__( TAG, "read(): total bytes = %d\n", recv_bytes_total );
+	//__LOGT__( TAG, "read(): data = %s\n", buffer );
+
+	return recv_bytes_total;
+}
+
+
+//! Handle I/O: Client, Server
+// ---------------------------------------------------------------
+int CAsyncTaskServer::write_int(const int val) {
+	return write_int(m_sockfd, val);
+}
+
+int CAsyncTaskServer::write_float(const float val) {
+	return write_float(m_sockfd, val);
+}
+
+int CAsyncTaskServer::write_bool(const unsigned char val) {
+	return write_bool(m_sockfd, val);
+}
+
+int CAsyncTaskServer::write(const unsigned char* buffer, const int len) {
+	return write(m_sockfd, buffer, len);
+}
+
+int CAsyncTaskServer::read_int(int* val) {
+	return read_int(m_sockfd, val);
+}
+
+int CAsyncTaskServer::read_float(float* val) {
+	return read_float(m_sockfd, val);
+}
+
+int CAsyncTaskServer::read_bool(unsigned char* val) {
+	return read_bool(m_sockfd, val);
+}
+
+int CAsyncTaskServer::read(unsigned char* buffer, const int len) {
+	return read(m_sockfd, buffer, len, 0);
+}
+int CAsyncTaskServer::read(unsigned char* buffer, const int len, const int read_len) {
+	return read(m_sockfd, buffer, len, read_len);
+}
+
+int CAsyncTaskClient::write_int(const int val) {
+	return write_int(m_sockfd, val);
+}
+
+int CAsyncTaskClient::write_float(const float val) {
+	return write_float(m_sockfd, val);
+}
+
+int CAsyncTaskClient::write_bool(const unsigned char val) {
+	return write_bool(m_sockfd, val);
+}
+
+int CAsyncTaskClient::write(const unsigned char* buffer, const int len) {
+	return write(m_sockfd, buffer, len);
+}
+
+int CAsyncTaskClient::read_int(int* val) {
+	return read_int(m_sockfd, val);
+}
+
+int CAsyncTaskClient::read_float(float* val) {
+	return read_float(m_sockfd, val);
+}
+
+int CAsyncTaskClient::read_bool(unsigned char* val) {
+	return read_bool(m_sockfd, val);
+}
+
+int CAsyncTaskClient::read(unsigned char* buffer, const int len) {
+	return read(m_sockfd, buffer, len, 0);
+}
+int CAsyncTaskClient::read(unsigned char* buffer, const int len, const int read_len) {
+	return read(m_sockfd, buffer, len, read_len);
+}
+
+
+
 //! Server
 // ---------------------------------------------------------------
 CAsyncTaskServer::CAsyncTaskServer(void) : CThreadTask("SERVER"), TAG("CAsyncTaskServer") {
@@ -192,6 +451,35 @@ CAsyncTaskServer::CAsyncTaskServer(void) : CThreadTask("SERVER"), TAG("CAsyncTas
 
 CAsyncTaskServer::~CAsyncTaskServer(void) {
 	__LOGT__( TAG, "~CAsyncTaskServer()" );
+
+#ifdef __ANDROID_NDK__
+	//! NOTE: Don't use named "__release", which is reserved in NDK
+	___release();
+#else
+	__release();
+#endif
+}
+
+int CAsyncTaskServer::__init(void) {
+	__LOGT__( TAG, "__init()" );
+#ifdef _WINDOWS
+	WSADATA wsaData;
+	int ret = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (ret != NO_ERROR) {
+		__LOGT__( TAG, "__init(): Error: WSAStartup(): %d\n", ret );
+		return -1;
+	}
+#else
+#endif
+}
+
+#ifdef __ANDROID_NDK__
+	//! NOTE: Don't use named "__release", which is reserved in NDK
+void CAsyncTaskServer::___release(void) {
+#else
+void CAsyncTaskServer::__release(void) {
+#endif
+	__LOGT__( TAG, "__release()" );
 
 	server_close();
 }
@@ -331,7 +619,11 @@ bool CAsyncTaskServer::server_open_tcp(void) {
 
 	m_sockfd = socket( PF_INET, SOCK_STREAM, IPPROTO_TCP );
 	if ( m_sockfd < 0 ) {
+#ifdef _WINDOWS
+		__LOGT__( TAG, "server_open_tcp(): socket(): %ld [FAIL]", WSAGetLastError() );
+#else
 		__LOGT__( TAG, "server_open_tcp(): socket() [FAIL]" );
+#endif
 		server_close();
 		return false;
 	}
@@ -357,6 +649,19 @@ bool CAsyncTaskServer::server_open_tcp(void) {
 		m_sockaddr.sin_addr.s_addr = htonl( INADDR_ANY );	// inet_addr( "192.168.0.x" );
 #endif
 	}
+
+
+#ifdef _WINDOWS
+	// blocking mode
+	{
+		u_long blocking_mode = 0;
+		ret = ioctlsocket( m_sockfd, FIONBIO, &blocking_mode );
+		if ( ret < 0 ) {
+			__LOGT__( TAG, "server_open_tcp(): ioctlsocket(): %ld\n", ret);
+			return false;
+		}
+	}
+#endif
 
 
 	// Prevent bind error
@@ -669,6 +974,7 @@ void CAsyncTaskServer::server_close(void) {
 #ifdef _WINDOWS
 	:shutdown( m_sockfd, SD_BOTH );
 	::closesocket( m_sockfd );
+	WSACleanup();
 #else
 	shutdown( m_sockfd, SHUT_RDWR );
 	close( m_sockfd );
@@ -1539,6 +1845,33 @@ namespace g_UTIL {
 		}
 		*/
 	}  // namespace NET
+
+#ifdef _WINDOWS
+#else
+	// htonf, ntohf
+	// Source: https://beej.us/guide/bgnet/examples/pack.c
+	uint32_t htonf(float f) {
+		uint32_t p;
+		uint32_t sign;
+
+		if (f < 0) { sign = 1; f = -f; }
+		else { sign = 0; }
+
+		p = ((((uint32_t)f) & 0x7fff) << 16) | (sign << 31); // whole part and sign
+		p |= (uint32_t)(((f - (int)f) * 65536.0f)) & 0xffff; // fraction
+
+		return p;
+	}
+
+	float ntohf(uint32_t p) {
+		float f = ((p >> 16) & 0x7fff); // whole part
+		f += (p & 0xffff) / 65536.0f; // fraction
+
+		if (((p >> 31) & 0x1) == 0x1) { f = -f; } // sign bit set
+
+		return f;
+	}
+#endif
 } // namespace g_UTIL
 
 #ifdef __cplusplus

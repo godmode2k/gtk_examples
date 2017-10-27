@@ -48,10 +48,13 @@ Note:
 #include <cstring>
 #include <cstdlib>
 #include <cstdarg>		// Variable Argument Lists
+#include <cstdint>
+
 //#include <stdio.h>
 //#include <string.h>
 //#include <stdlib.h>
 //#include <stdarg.h>
+//#include <stdint.h>
 #include <errno.h>		// error code
 
 #ifdef __LINUX__
@@ -73,7 +76,9 @@ Note:
 
 #include <termios.h>	// Keyboard event (_kbhit)
 #elif _WINDOWS
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <winsock2.h>
 #else
 #endif
@@ -271,6 +276,11 @@ namespace g_UTIL {
 		//! TCP/UDP hole punching for NAT
 		//bool get_remote_ip_port(const char* hosting, char* _ipaddr, int* _port);
 	}  // namespace NET
+
+	// htonf, ntohf
+	// Source: https://beej.us/guide/bgnet/examples/pack.c
+	uint32_t htonf(float f);
+	float ntohf(uint32_t p);
 } // namespace g_UTIL
 
 #ifdef __cplusplus
@@ -282,15 +292,52 @@ namespace g_UTIL {
 
 //! Class
 // ---------------------------------------------------------------
+class CHandleIO {
+private:
+	const char* TAG;
+public:
+	// Ctor/Dtor
+	explicit CHandleIO(void);
+	~CHandleIO();
+
+#ifdef _WINDOWS
+	int write_int(const SOCKET socket, const int val);
+	int write_float(const SOCKET socket, const float val);
+	int write_bool(const SOCKET socket, const unsigned char val);
+	int write(const SOCKET socket, const unsigned char* buffer, const int len);
+
+	int read_int(const SOCKET socket, int* val);
+	int read_float(const SOCKET socket, float* val);
+	int read_bool(const SOCKET socket, unsigned char* val);
+	int read(const SOCKET socket, unsigned char* buffer, const int len);
+	int read(const SOCKET socket, unsigned char* buffer, const int len, const int read_len);
+#else
+	int write_int(const int socket, const int val);
+	int write_float(const int socket, const float val);
+	int write_bool(const int socket, const unsigned char val);
+	int write(const int socket, const unsigned char* buffer, const int len);
+
+	int read_int(const int socket, int* val);
+	int read_float(const int socket, float* val);
+	int read_bool(const int socket, unsigned char* val);
+	int read(const int socket, unsigned char* buffer, const int len);
+	int read(const int socket, unsigned char* buffer, const int len, const int read_len);
+#endif
+};
+
 class CAsyncTaskClient;
-class CAsyncTaskServer : public CThreadTask {
+class CAsyncTaskServer : public CThreadTask, CHandleIO {
 private:
 	const char* TAG;
 
 	// Parent object
 	//CNetSockLib* m_pParent;
 
+#ifdef _WINDOWS
+	SOCKET m_sockfd;
+#else
 	int m_sockfd;
+#endif
 	unsigned short m_port;
 	int m_backlog;
 	int m_timeout;
@@ -335,7 +382,20 @@ public:
 	void start_server(void);
 	void stop_server(void);
 
+
+	int write_int(const int val);
+	int write_float(const float val);
+	int write_bool(const unsigned char val);
+	int write(const unsigned char* buffer, const int len);
+
+	int read_int(int* val);
+	int read_float(float* val);
+	int read_bool(unsigned char* val);
+	int read(unsigned char* buffer, const int len);
+	int read(unsigned char* buffer, const int len, const int read_len);
+
 	//virtual int send_data(void);
+
 
 	// Thread
 	void* inBackground(std::vector<void*>* pvecVal = NULL);
@@ -404,6 +464,17 @@ public:
 	void set_my_ipaddr(const char* ipaddr);
 	const char* get_my_ipaddr(void);
 
+
+	int write_int(const int val);
+	int write_float(const float val);
+	int write_bool(const unsigned char val);
+	int write(const unsigned char* buffer, const int len);
+
+	int read_int(int* val);
+	int read_float(float* val);
+	int read_bool(unsigned char* val);
+	int read(unsigned char* buffer, const int len);
+	int read(unsigned char* buffer, const int len, const int read_len);
 
 	//void set_ready_for_send(const bool ready) { m_ready_for_send = ready; }
 	//bool get_ready_for_send(void) { return m_ready_for_send; }
