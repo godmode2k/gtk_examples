@@ -83,6 +83,7 @@ OPT_LIBS_CUTTER="" #"-lcutter"
 OPT_LIBS="$OPT_LIBS_PTHREAD	\
 	$OPT_LIBS_TIME		\
 	$OPT_LIBS_CUTTER	\
+	-lX11
 "
 #
 #
