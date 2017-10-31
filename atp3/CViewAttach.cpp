@@ -3257,7 +3257,7 @@ objAttachPatchersIO_st* CViewAttach::patchers_io_get(const unsigned short idx) {
 	
 	if ( !m_pvec_patchers_io ) {
 		__LOGT__( TAG, "patchers_io_get(): Patchers IO Container == NULL" );
-		return false;
+		return NULL;
 	}
 
 
