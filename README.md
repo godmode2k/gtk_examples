@@ -12,7 +12,8 @@ Environment
 ----------
 > build all and tested on GNU/Linux X-Window
 
-    GNU/Linux: Ubuntu 11.10 (Unity 3D, 2D)
+    GNU/Linux: Ubuntu 11.10_x86, 16.10_x64 (Unity 3D, 2D)
+    G++ version: 4.6.1 (Ubuntu 11.10_x86), 6.2.0 (Ubuntu 16.10_x64)
     GTK+ version: 2.x, 3.x
     Cairo version: 1.xx
     Pango version: 1.0
