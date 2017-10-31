@@ -579,7 +579,8 @@ void CToastMsgDlg::progressUpdate(void* pVal) {
 void CToastMsgDlg::postExecute(void* pResult, void* pExtraVal) {
 	__LOGT__( TAG, "postExecute()" );
 
-	int result = reinterpret_cast<int>(pResult);
+	//int result = reinterpret_cast<int>(pResult);
+	int result = static_cast<int>(reinterpret_cast<long>(pResult));
 	__LOGT__( TAG, "postExecute(): result = %s", (result? "TRUE" : "FALSE") );
 
 
