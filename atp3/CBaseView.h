@@ -43,6 +43,7 @@ Note:
 #include <iostream>
 #include <cstdio>		// <stdio.h>
 #include <cstring>		// <string.h>
+#include <cmath>		// <math.h> M_PI
 
 /*
 #include <gtk-2.0/gtk/gtk.h>
