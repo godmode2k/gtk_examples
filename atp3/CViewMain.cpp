@@ -95,7 +95,7 @@ void CViewMain::__init(void) {
 	//  - Font information
 	set_tmp_font_info_reset();
 	//  - Background Image information
-	set_tmp_bg_img_info_release();
+	set_tmp_bg_img_info_release( true );
 
 
 	// Take a Screenshot
@@ -1461,9 +1461,13 @@ void CViewMain::set_tmp_bg_img_info(const char* bg_img_filename) {
 	}
 }
 
-void CViewMain::set_tmp_bg_img_info_release(void) {
+void CViewMain::set_tmp_bg_img_info_release(bool init) {
 	//__LOGT__( TAG, "set_tmp_bg_img_info_release()" );
 	
+	if ( init ) {
+		m_tmp_obj_bg_img_info.bg_img_filename = NULL;
+	}
+
 	if ( m_tmp_obj_bg_img_info.bg_img_filename ) {
 		delete m_tmp_obj_bg_img_info.bg_img_filename;
 		m_tmp_obj_bg_img_info.bg_img_filename = NULL;

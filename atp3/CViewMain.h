@@ -307,7 +307,7 @@ public:
 	tmp_obj_font_info_st* get_tmp_font_info(void) { return &m_tmp_obj_font_info; }
 	void set_tmp_bg_img_info_select(bool select);
 	void set_tmp_bg_img_info(const char* bg_img_filename);
-	void set_tmp_bg_img_info_release(void);
+	void set_tmp_bg_img_info_release(bool init = false);
 	tmp_obj_bg_img_info_st* get_tmp_bg_img_info(void) { return &m_tmp_obj_bg_img_info; }
 
 	// Attachment
