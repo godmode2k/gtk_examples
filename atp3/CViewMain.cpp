@@ -1207,7 +1207,13 @@ bool CViewMain::take_screenshot_save(int x, int y, int width, int height,
 		return false;
 	}
 
+#ifdef __GTKv2__
 	gdk_window = view->window;
+#elif __GTKv3__
+	gdk_window = gtk_widget_get_window( view );
+#else
+#endif
+
 	if ( !gdk_window )  {
 		__LOGT__( TAG, "take_screenshot_save(): GdkWindow == NULL" );
 		return false;
@@ -1215,8 +1221,14 @@ bool CViewMain::take_screenshot_save(int x, int y, int width, int height,
 
 	{
 		//gdk_drawable_get_size(GDK_DRAWABLE(view), &width, &height );
+#ifdef __GTKv2__
 		pixbuf = gdk_pixbuf_get_from_drawable( NULL, GDK_DRAWABLE(gdk_window),
 						NULL, x, y, 0, 0, width, height );
+#elif __GTKv3__
+		pixbuf = gdk_pixbuf_get_from_window( gdk_window,
+						x, y, width, height );
+#else
+#endif
 
 		if ( !pixbuf ) {
 			__LOGT__( TAG, "take_screenshot_save(): GdkWindow == NULL" );

@@ -396,7 +396,19 @@ gint CProgressDlg::show(GtkWindow* pWindow, gpointer user_data, const char* msg,
 				}
 
 				gtk_progress_bar_set_text( (GtkProgressBar*)m_pProgressBar, DEFAULT_STR_PROGRESS );
+
+#ifdef __GTKv2__
 				gtk_progress_bar_set_orientation( (GtkProgressBar*)m_pProgressBar, GTK_PROGRESS_LEFT_TO_RIGHT );
+#elif __GTKv3__
+				{
+					GtkOrientable* orientable = NULL;
+					orientable = GTK_ORIENTABLE( m_pProgressBar );
+					if ( orientable ) {
+						gtk_orientable_set_orientation( orientable, GTK_ORIENTATION_HORIZONTAL );
+					}
+				}
+#else
+#endif
 				gtk_progress_bar_set_fraction( (GtkProgressBar*)m_pProgressBar, fraction );
 				gtk_progress_bar_pulse( (GtkProgressBar*)m_pProgressBar );
 			}
