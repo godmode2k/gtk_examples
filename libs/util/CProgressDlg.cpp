@@ -588,7 +588,9 @@ void CProgressDlg::stop(void) {
 	__LOGT__( TAG, "stop()" );
 
 	set_working( false );
-	destroy_ui();
+	//destroy_ui();
+	//^~~~~~~~~~~~~
+	// gtkwidget.c:15927:gtk_widget_unregister_window: assertion failed: (user_data == widget)
 }
 
 void CProgressDlg::__stop(void) {
