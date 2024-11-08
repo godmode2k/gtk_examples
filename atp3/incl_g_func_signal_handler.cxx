@@ -894,12 +894,16 @@ namespace g_FuncSignalHandler {
 			gtk_font_selection_dialog_set_preview_text( GTK_FONT_SELECTION_DIALOG(dlg),
 					"Preview Test" );
 
-			g_signal_connect( G_OBJECT(dlg), "response",
-							G_CALLBACK(g_FuncSignalHandler::on_event_text_font_dialog_open), user_data );
+			//g_signal_connect( G_OBJECT(dlg), "response",
+			//				G_CALLBACK(g_FuncSignalHandler::on_event_text_font_dialog_open), user_data );
+
+            g_FuncSignalHandler::on_event_text_font_dialog_open( GTK_FONT_SELECTION_DIALOG(dlg), gtk_dialog_run(GTK_DIALOG(dlg)) , user_data );
+            gtk_widget_destroy( dlg );
+
+//            gtk_widget_show_all( dlg );
 #elif __GTKv3__
-#if 0
-			//GtkWindow* window = (GtkWindow*)((Widgets_st*)user_data)->pWindow;
-			GtkWidget* window = ((Widgets_st*)user_data)->pWindow;
+			GtkWindow* window = (GtkWindow*)((Widgets_st*)user_data)->pWindow;
+			//GtkWidget* window = ((Widgets_st*)user_data)->pWindow;
 
 			if ( window ) {
 				dlg = gtk_font_chooser_dialog_new( title, window );
@@ -909,20 +913,23 @@ namespace g_FuncSignalHandler {
 				}
 
 				//gtk_window_set_modal( GTK_WINDOW(dlg), true );
-				gtk_font_chooser_set_font_name( GTK_FONT_CHOOSER_DIALOG(dlg),
+				//gtk_font_chooser_set_font( GTK_FONT_CHOOSER_DIALOG(dlg),
+				gtk_font_chooser_set_font( GTK_FONT_CHOOSER(dlg),
 						//"Sans Regular 12" );		// "Sans Bold Italic 12"
 						font_name );
-				gtk_font_chooser_set_preview_text( GTK_FONT_CHOOSER_DIALOG(dlg),
-						"Preview Test" );
+				//gtk_font_chooser_set_preview_text( GTK_FONT_CHOOSER_DIALOG(dlg),
+				gtk_font_chooser_set_preview_text( GTK_FONT_CHOOSER(dlg), "Preview Test" );
 
-				g_signal_connect( G_OBJECT(dlg), "response",
-								G_CALLBACK(g_FuncSignalHandler::on_event_text_font_dialog_open), user_data );
+				//g_signal_connect( G_OBJECT(dlg), "response",
+				//				G_CALLBACK(g_FuncSignalHandler::on_event_text_font_dialog_open), user_data );
+
+                g_FuncSignalHandler::on_event_text_font_dialog_open( GTK_FONT_CHOOSER(dlg), gtk_dialog_run(GTK_DIALOG(dlg)) , user_data );
 			}
-#endif
+            gtk_widget_destroy( dlg );
 #else
 #endif
 
-			gtk_widget_show_all( dlg );
+//			gtk_widget_show_all( dlg );
 		}
 	}
 
@@ -936,7 +943,12 @@ namespace g_FuncSignalHandler {
 			bool domodal = true;
 			GtkWidget* dlg = NULL;
 			GtkWidget* colorsel = NULL;
+#ifdef __GTKv2__
 			GdkColor color { 0, };
+#elif __GTKv3__
+            GdkRGBA color { 0, };
+#else
+#endif
 			guint alpha = 65535;
 
 
@@ -952,10 +964,15 @@ namespace g_FuncSignalHandler {
 						guint16 g = attach->get_text_font_color().g;
 						guint16 b = attach->get_text_font_color().b;
 
-						alpha = a;
 						color.red = r;
 						color.green = g;
 						color.blue = b;
+#ifdef __GTKv2__
+						alpha = a;
+#elif __GTKv3__
+						color.alpha = a;
+#else
+#endif
 
 						//__LOGT__( TAG__g_FuncSignalHandler,
 						//			"on_text_font_color_dialog_open(): ===== OLD FONT COLOR INFO ===== {" );
@@ -1009,6 +1026,100 @@ namespace g_FuncSignalHandler {
 			g_signal_connect( G_OBJECT(dlg), "response",
 							G_CALLBACK(g_FuncSignalHandler::on_event_text_font_color_dialog_open), user_data );
 #elif __GTKv3__
+			GtkWindow* window = (GtkWindow*)((Widgets_st*)user_data)->pWindow;
+			//GtkWidget* window = ((Widgets_st*)user_data)->pWindow;
+
+            if ( window ) {
+                dlg = gtk_color_selection_dialog_new( title );
+                //dlg = gtk_color_chooser_dialog_new( title, window );
+                if ( !dlg ) {
+                    __LOGT__( TAG__g_FuncSignalHandler, "on_text_font_color_dialog_open(): Dialog == NULL" );
+                    return;
+                }
+
+                gtk_window_set_modal( GTK_WINDOW(dlg), domodal );
+
+                // color_selection
+                colorsel = gtk_color_selection_dialog_get_color_selection( GTK_COLOR_SELECTION_DIALOG(dlg) );
+                //colorsel = GTK_COLOR_SELECTION_DIALOG(dlg)->colorsel;
+                //colorsel = GTK_COLOR_CHOOSER(dlg);
+                if ( colorsel ) {
+                    // previous color
+                    gtk_color_selection_set_has_opacity_control( GTK_COLOR_SELECTION(colorsel), true );
+                    // GTK3 v3.4 ~
+                    gtk_color_selection_set_current_rgba( GTK_COLOR_SELECTION(colorsel), &color );
+
+                    // GTK3 3.x ~ v3.3
+                    GdkColor color_new = { 0, };
+                    gint alpha_new = 0;
+                    alpha_new = color.alpha;
+                    color_new.red = color.red;
+                    color_new.green = color.green;
+                    color_new.blue = color.blue;
+                    gtk_color_selection_set_current_color( GTK_COLOR_SELECTION(colorsel), &color_new );
+                    gtk_color_selection_set_current_alpha( GTK_COLOR_SELECTION(colorsel), alpha_new );
+
+                    //gtk_widget_show_all( dlg );
+                }
+
+
+                // color_chooser
+                //gtk_color_chooser_set_use_alpha( GTK_COLOR_CHOOSER(dlg), true );
+                //gtk_color_chooser_set_rgba( GTK_COLOR_CHOOSER(dlg), &color );
+
+
+                //g_signal_connect( G_OBJECT(dlg), "response",
+                //				G_CALLBACK(g_FuncSignalHandler::on_event_text_font_color_dialog_open), user_data );
+
+                gint response = gtk_dialog_run(GTK_DIALOG(dlg));
+
+
+//                {
+//                    //if ( colorsel )
+//                    {
+//                        printf( "res = \n" );
+//
+//                        //gtk_color_selection_set_current_color( GTK_COLOR_SELECTION(colorsel), &color );
+//
+//                        // GTK3 v3.4 ~
+//                        gtk_color_selection_get_current_rgba( GTK_COLOR_SELECTION(colorsel), &color );
+//
+//                        // GTK3 3.x ~ v3.3
+//                        GdkColor color_new = { 0, };
+//                        gint alpha_new = 0;
+//                        gtk_color_selection_get_current_color( GTK_COLOR_SELECTION(colorsel), &color_new );
+//                        alpha_new = gtk_color_selection_get_current_alpha( GTK_COLOR_SELECTION(colorsel) );
+//
+//
+//                        //gtk_color_chooser_get_rgba( GTK_COLOR_CHOOSER(dlg), &color );
+//
+//
+//                        __LOGT__( TAG__g_FuncSignalHandler,
+//                                    "on_text_font_color_dialog_open(): color(RGBA) = #%X%X%X%X"
+//                                    ", A(%d), R(%d), G(%d), B(%d)",
+//                                    color.red, color.green, color.blue, color.alpha,
+//                                    PAINT_COLOR_UINT16_8((int)color.alpha), PAINT_COLOR_UINT16_8((int)color.red),
+//                                    PAINT_COLOR_UINT16_8((int)color.green), PAINT_COLOR_UINT16_8((int)color.blue)
+//                        );
+//
+//                        __LOGT__( TAG__g_FuncSignalHandler,
+//                                    "on_text_font_color_dialog_open(): color(RGBA) = #%X%X%X%X"
+//                                    ", A(%d), R(%d), G(%d), B(%d)",
+//                                    color_new.red, color_new.green, color_new.blue, alpha_new,
+//                                    PAINT_COLOR_UINT16_8((int)alpha_new), PAINT_COLOR_UINT16_8((int)color_new.red),
+//                                    PAINT_COLOR_UINT16_8((int)color_new.green), PAINT_COLOR_UINT16_8((int)color_new.blue)
+//                        );
+//
+//                    }
+//                }
+
+
+                g_FuncSignalHandler::on_event_text_font_color_dialog_open( GTK_COLOR_SELECTION_DIALOG(dlg), response , user_data );
+                //g_FuncSignalHandler::on_event_text_font_color_dialog_open( GTK_COLOR_CHOOSER(dlg), response, user_data );
+                //g_FuncSignalHandler::on_event_text_font_color_dialog_open( GTK_COLOR_CHOOSER(dlg), gtk_dialog_run(GTK_DIALOG(dlg)) , user_data );
+            }
+
+            gtk_widget_destroy( dlg );
 #else
 #endif
 		}
@@ -1047,8 +1158,12 @@ namespace g_FuncSignalHandler {
 		}
 	}
 
-	void on_event_text_font_dialog_open(GtkFontSelectionDialog* dlg, gint response,
-			gpointer user_data) {
+#ifdef __GTKv2__
+	void on_event_text_font_dialog_open(GtkFontSelectionDialog* dlg, gint response, gpointer user_data) {
+#elif __GTKv3__
+	void on_event_text_font_dialog_open(GtkFontChooser* dlg, gint response, gpointer user_data) {
+#else
+#endif
 		//__LOGT__( TAG__g_FuncSignalHandler, "on_event_text_font_dialog_open()" );
 
 		if ( !dlg || !user_data ) return;
@@ -1056,11 +1171,11 @@ namespace g_FuncSignalHandler {
 		{
 			char* font_name = NULL;
 
-#ifdef __GTKv2__
 			switch ( response ) {
 				case GTK_RESPONSE_APPLY:
 				case GTK_RESPONSE_OK:
 					{
+#ifdef __GTKv2__
 						//font_name = gtk_font_selection_dialog_get_font_name( dlg );
 						font_name = gtk_font_selection_get_font_name( GTK_FONT_SELECTION(dlg->fontsel) );
 						//__LOGT__( TAG__g_FuncSignalHandler,
@@ -1074,6 +1189,35 @@ namespace g_FuncSignalHandler {
 							//  - new size = (selected size * PANGO_SCALE)
 							int size = gtk_font_selection_get_size( GTK_FONT_SELECTION(dlg->fontsel) );
 							size /= PANGO_SCALE;
+
+
+#elif __GTKv3__
+						//font_name = gtk_font_chooser_get_font( dlg );
+
+                        //PangoFontDescription* desc;
+                        //const char* family;
+                        //gint size;
+                        //PangoStyle style;
+                        //PangoWeight weight;
+                        //
+                        //desc = gtk_font_chooser_get_font_desc( GTK_FONT_CHOOSER(dialog) );
+                        //family = pango_font_description_get_family( desc );
+                        //size = pango_font_description_get_size(desc) / 1000;
+                        //weight = pango_font_description_get_weight( desc );
+                        //style = pango_font_description_get_style( desc );
+
+						font_name = gtk_font_chooser_get_font( GTK_FONT_CHOOSER(dlg) );
+						//__LOGT__( TAG__g_FuncSignalHandler,
+						//			"on_event_text_font_dialog_open(): Font name = %s", font_name );
+
+						{
+							PangoFontFamily* font_family = gtk_font_chooser_get_font_family( GTK_FONT_CHOOSER(dlg) );
+							PangoFontFace* font_face = gtk_font_chooser_get_font_face( GTK_FONT_CHOOSER(dlg) );
+							// Size
+							int size = gtk_font_chooser_get_font_size( GTK_FONT_CHOOSER(dlg) );
+							size /= PANGO_SCALE;
+#else
+#endif
 
 							if ( font_family && font_face) {
 								// Family name
@@ -1128,99 +1272,84 @@ namespace g_FuncSignalHandler {
 						}
 					} break;
 			}
-#elif __GTKv3__
-#if 0
-			switch ( response ) {
-				case GTK_RESPONSE_OK:
-					{
-						font_name = gtk_font_chooser_get_font( dlg );
-						//__LOGT__( TAG__g_FuncSignalHandler,
-						//			"on_event_text_font_dialog_open(): Font name = %s", font_name );
-
-						{
-							PangoFontFamily* font_family = gtk_font_chooser_get_font_family( dlg );
-							PangoFontFace* font_face = gtk_font_chooser_get_font_face( dlg );
-							// Size
-							int size = gtk_font_chooser_get_font_size( dlg );
-
-							if ( font_family && font_face ) {
-								// Family name
-								const char* family_name = pango_font_family_get_name( font_family );
-								// Typefaces (style)
-								const char* face_name = pango_font_face_get_face_name( font_face );
-
-								//__LOGT__( TAG__g_FuncSignalHandler,
-								//			"on_event_text_font_dialog_open(): family name = %s"
-								//			" face name = %s, size = %d",
-								//			family_name, face_name, size );
-
-								{
-									CViewMain* view = g_pCAtp3->get_view_main();
-
-									if ( view ) {
-										CViewAttach* attach = view->attach_selected();
-
-										if ( attach ) {
-											// Font: "Sans Bold Italic 12"
-											//
-											// Family name
-											// Typefaces (style)
-											// Size
-										}
-										else {
-											__LOGT__( TAG__g_FuncSignalHandler,
-														"on_event_text_font_dialog_open(): Attach object == NULL" );
-										}
-									}
-								}
-							}
-						}
-
-						if ( font_name ) {
-							g_free( font_name );
-							font_name = NULL;
-						}
-					} break;
-			}
-#endif
-#else
-#endif
 
 			gtk_widget_destroy( GTK_WIDGET(dlg) );
 		}
 	}
 
-	void on_event_text_font_color_dialog_open(GtkFontSelectionDialog* dlg, gint response,
-			gpointer user_data) {
+#ifdef __GTKv2__
+	void on_event_text_font_color_dialog_open(GtkFontSelectionDialog* dlg, gint response, gpointer user_data) {
+#elif __GTKv3__
+	void on_event_text_font_color_dialog_open(GtkColorSelectionDialog* dlg, gint response, gpointer user_data) {
+	//void on_event_text_font_color_dialog_open(GtkFontSelectionDialog* dlg, gint response, gpointer user_data) {
+	//void on_event_text_font_color_dialog_open(GtkColorChooser* dlg, gint response, gpointer user_data) {
+#else
+#endif
 		//__LOGT__( TAG__g_FuncSignalHandler, "on_event_text_font_color_dialog_open()" );
 
 		if ( !dlg || !user_data ) return;
 
 		{
 			GtkWidget* colorsel = NULL;
+#ifdef __GTKv2__
 			GdkColor color { 0, };
+#elif __GTKv3__
+            GdkRGBA color { 0, };
+#else
+#endif
 			guint16 alpha = 0;
 
-#ifdef __GTKv2__
+
 			switch ( response ) {
 				case GTK_RESPONSE_HELP:
 					{
 					} break;
 				case GTK_RESPONSE_OK:
 					{
+#ifdef __GTKv2__
 						colorsel = GTK_COLOR_SELECTION_DIALOG(dlg)->colorsel;
 						if ( colorsel ) {
 							gtk_color_selection_get_current_color( GTK_COLOR_SELECTION(colorsel), &color );
 							alpha = gtk_color_selection_get_current_alpha( GTK_COLOR_SELECTION(colorsel) );
+#elif __GTKv3__
+                        colorsel = gtk_color_selection_dialog_get_color_selection( GTK_COLOR_SELECTION_DIALOG(dlg) );
+						//colorsel = GTK_COLOR_CHOOSER(dlg);
+                        
+						if ( colorsel ) { // GtkColorSelectionDialog->GtkColorSelection
+							//gtk_color_selection_get_current_color( GTK_COLOR_SELECTION(colorsel), &color );
+							//alpha = gtk_color_selection_get_current_alpha( GTK_COLOR_SELECTION(colorsel) );
 
-							//__LOGT__( TAG__g_FuncSignalHandler,
-							//			"on_event_text_font_color_dialog_open(): color(RGBA) = #%X%X%X%X"
-							//			", A(%d), R(%d), G(%d), B(%d)",
-							//			color.red, color.green, color.blue, alpha,
-							//			PAINT_COLOR_UINT16_8(alpha),
-							//			PAINT_COLOR_UINT16_8(color.red),
-							//			PAINT_COLOR_UINT16_8(color.green),
-							//			PAINT_COLOR_UINT16_8(color.blue) );
+                            // GTK3 v3.4 ~
+                            gtk_color_selection_get_current_rgba( GTK_COLOR_SELECTION(colorsel), &color );
+
+                            // GTK3 3.x ~ v3.3
+                            GdkColor color_new = { 0, };
+                            gint alpha_new = 0;
+                            gtk_color_selection_get_current_color( GTK_COLOR_SELECTION(colorsel), &color_new );
+                            alpha_new = gtk_color_selection_get_current_alpha( GTK_COLOR_SELECTION(colorsel) );
+
+                            color.alpha = alpha_new;
+                            color.red = color_new.red;
+                            color.green = color_new.green;
+                            color.blue = color_new.blue;
+#else
+#endif
+
+							__LOGT__( TAG__g_FuncSignalHandler,
+										"on_event_text_font_color_dialog_open(): color(RGBA) = #%X%X%X%X"
+										", A(%d), R(%d), G(%d), B(%d)",
+										color.red, color.green, color.blue,
+#ifdef __GTKv2__
+                                        alpha,
+                                        PAINT_COLOR_UINT16_8(alpha), PAINT_COLOR_UINT16_8(color.red),
+                                        PAINT_COLOR_UINT16_8(color.green), PAINT_COLOR_UINT16_8(color.blue)
+#elif __GTKv3__
+                                        color.alpha,
+                                        PAINT_COLOR_UINT16_8((int)color.alpha), PAINT_COLOR_UINT16_8((int)color.red),
+                                        PAINT_COLOR_UINT16_8((int)color.green), PAINT_COLOR_UINT16_8((int)color.blue)
+#else
+#endif
+                            );
 
 							{
 								CViewMain* view = g_pCAtp3->get_view_main();
@@ -1230,10 +1359,15 @@ namespace g_FuncSignalHandler {
 										// Temporary
 										ColorARGB_st color_argb;
 
-										color_argb.a = alpha;
 										color_argb.r = color.red;
 										color_argb.g = color.green;
 										color_argb.b = color.blue;
+#ifdef __GTKv2__
+										color_argb.a = alpha;
+#elif __GTKv3__
+										color_argb.a = color.alpha;
+#else
+#endif
 
 										// Color
 										view->set_tmp_font_info_color( color_argb );
@@ -1243,9 +1377,6 @@ namespace g_FuncSignalHandler {
 						}
 					} break;
 			}
-#elif __GTKv3__
-#else
-#endif
 
 			gtk_widget_destroy( GTK_WIDGET(dlg) );
 		}

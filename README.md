@@ -12,11 +12,23 @@ Environment
 ----------
 > build all and tested on GNU/Linux X-Window
 
-    GNU/Linux: Ubuntu 11.10_x86, 16.10_x64 (Unity 3D, 2D)
-    G++ version: 4.6.1 (Ubuntu 11.10_x86), 6.2.0 (Ubuntu 16.10_x64)
+    GNU/Linux: Ubuntu 20.04 x64 (Unity 3D, 2D)
+    GCC(G++) version: 9.4.0
     GTK+ version: 2.x, 3.x
-    Cairo version: 1.xx
-    Pango version: 1.0
+    GDK pixbuf: 2.x
+    Cairo version: 2.x
+    Pango version: 1.x
+
+
+Build-tools
+----------
+```sh
+$ sudo apt-get install build-essential
+$ sudo apt-get install libgtk2.0-0 libgtk2.0-dev libgtk2.0-doc libgtk-3-0 libgtk-3-dev libgtk-3-doc
+$ sudo apt-get install libgdk-pixbuf2.0-0 libgdk-pixbuf2.0-dev libpango-1.0-0 libpango1.0-dev libpangocairo-1.0-0
+$ sudo apt-get install libcairo2 libcairo2-dev
+$ sudo apt-get install glade libglade2-0 libglade2-dev xxd
+```
 
 
 Build
@@ -45,6 +57,7 @@ Build
 	 -
 	 - ui_gtk2.glade           // Glade UI(XML) for GTK+2.x
 	 - ui_gtk3.glade           // Glade UI(XML) for GTK+3.x
+	 - ui_gtk3_new.glade       // Glade UI(XML) for GTK+3.20
 	 - ui_glade.h              // Glade UI(XML) to C-Style include file, AUTO-GENERATED at build
 
 
@@ -62,7 +75,12 @@ Build
 	  - CUtil.cpp              // Useful system functions (utility)
 
 
-    $ sh build.sh atp3 atp3.cpp
+    // GTK+ v2.x
+    $ sh build.sh atp3 atp3.cpp v2
+
+    // GTK+ v3.x
+    $ sh build.sh atp3 atp3.cpp v3
+
     $ ./atp3
 
 
@@ -112,14 +130,5 @@ Screenshots
 > Patchers IO
 
 ![alt tag](https://github.com/godmode2k/gtk_examples/raw/master/screenshots/screenshot_11.png)
-
-
-
-## Donation
-If this project help you reduce time to develop, you can give me a cup of coffee :)
-
-(BitcoinCash) -> bitcoincash:qqls8jsln7w5vzd32g4yrwprstu57aa8rgf4yvsm3m <br>
-(Bitcoin) -> 16kC7PUd75rvmwom4oftXRyg3gR9KTPb4m <br>
-(Ethereum) -> 0x90B45D2CBBB0367D50590659845C486497F89cBB <br>
 
 

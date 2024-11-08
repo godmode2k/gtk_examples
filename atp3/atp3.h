@@ -105,9 +105,14 @@ extern "C" {
 	#define DEFAULT_STR_UI_GLADE_STR_VAR	ui_gtk2_glade
 	#define DEFAULT_STR_UI_GLADE_STR_LEN	ui_gtk2_glade_len
 #elif __GTKv3__
-	#define DEFAULT_STR_UI_GLADE_FILE		"ui_gtk3.glade"
-	#define DEFAULT_STR_UI_GLADE_STR_VAR	ui_gtk3_glade
-	#define DEFAULT_STR_UI_GLADE_STR_LEN	ui_gtk3_glade_len
+    // GTK+ 3.20
+	#define DEFAULT_STR_UI_GLADE_FILE		"ui_gtk3_new.glade"
+	#define DEFAULT_STR_UI_GLADE_STR_VAR	ui_gtk3_new_glade
+	#define DEFAULT_STR_UI_GLADE_STR_LEN	ui_gtk3_new_glade_len
+    //
+	//#define DEFAULT_STR_UI_GLADE_FILE		"ui_gtk3.glade"
+	//#define DEFAULT_STR_UI_GLADE_STR_VAR	ui_gtk3_glade
+	//#define DEFAULT_STR_UI_GLADE_STR_LEN	ui_gtk3_glade_len
 #else
 #endif
 

@@ -5,7 +5,6 @@
 #
 # Author: Ho-Jung Kim (godmode2k@hotmail.com)
 # Date: Since June 29, 2012
-# Last modified: May 28, 2015
 #
 
 
@@ -13,39 +12,73 @@
 # Binary and build opt. for glade
 #
 BIN_CC=/usr/bin/g++
-#
-#
+
+
 # USE GTK+ 2.x
-##gmodule-2.0
-OPT_GTK2="-D__GTKv2__"
-#OPT_LIB="`pkg-config --cflags --libs gtk+-2.0 libglade-2.0 --libs gthread-2.0` $OPT_GTK2"
-OPT_LIB="`pkg-config --cflags --libs gtk+-2.0 libglade-2.0 --libs` $OPT_GTK2"
-#
+##//gmodule-2.0
+#OPT_GTK2="-D__GTKv2__"
+#_OPT_LIB="`pkg-config --cflags --libs gtk+-2.0 libglade-2.0 --libs` $OPT_GTK2"
+#//OPT_LIB="`pkg-config --cflags --libs gtk+-2.0 libglade-2.0 --libs gthread-2.0` $OPT_GTK2"
+
 # USE GTK+ 3.x
 #OPT_GTK3="-D__GTKv3__"
-#OPT_LIB="`pkg-config --cflags --libs gtk+-3.0 libglade-2.0` $OPT_GTK3"
-##GTKFLAGS="-Wl,-export-dynamic"
+#_OPT_LIB="`pkg-config --cflags --libs gtk+-3.0 libglade-2.0` $OPT_GTK3"
+##//GTKFLAGS="-Wl,-export-dynamic"
 #GTKFLAGS="-DGTK_DISABLE_SINGLE_INCLUDES"
 #GTKFLAGS="-DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED"
-#
-#
+
+
 # OpenGL
 OPT_USE_OPENGL="false"
-#
-#
-# Glade UI(XML) to C-Style include file
-BIN_XXD=/usr/bin/xxd
-#
+
+
+OPT_GTK2=""
+OPT_GTK3=""
+OPT_LIB=""
+
+
+if [ -z "$1" ] || [ -z "$2" ] | [ -z "$3" ]; then
+	echo $0
+	echo "Usage: sh $0 [output] [input] [v2|v3]"
+	echo ""
+	exit
+fi
+
+if [ "$3" = "v2" ]; then
+    # USE GTK+ 2.x
+    ##//gmodule-2.0
+    OPT_GTK2="-D__GTKv2__"
+    OPT_LIB="`pkg-config --cflags --libs gtk+-2.0 libglade-2.0 --libs` $OPT_GTK2"
+    #//OPT_LIB="`pkg-config --cflags --libs gtk+-2.0 libglade-2.0 --libs gthread-2.0` $OPT_GTK2"
+elif [ "$3" = "v3" ]; then
+    # USE GTK+ 3.x
+    OPT_GTK3="-D__GTKv3__"
+    OPT_LIB="`pkg-config --cflags --libs gtk+-3.0 libglade-2.0` $OPT_GTK3"
+    ##//GTKFLAGS="-Wl,-export-dynamic"
+    #GTKFLAGS="-DGTK_DISABLE_SINGLE_INCLUDES"
+    #GTKFLAGS="-DGDK_DISABLE_DEPRECATED -DGTK_DISABLE_DEPRECATED"
+else
+	echo $0
+	echo "Usage: sh $0 [output] [input] [v2|v3]"
+	echo ""
+	exit
+fi
+
+
 echo "-------------------------"
 if [ -z "$OPT_GTK2" ]; then
 	echo '=== [GTK+ VERSION 3] ==='
-	XXD_GLADE_FILE="ui_gtk3.glade"
+	XXD_GLADE_FILE="ui_gtk3_new.glade"
 else
 	echo '=== [GTK+ VERSION 2] ==='
 	XXD_GLADE_FILE="ui_gtk2.glade"
 fi
 echo "-------------------------"
+
+
+# Glade UI(XML) to C-Style include file
 #
+BIN_XXD=/usr/bin/xxd
 #XXD_GLADE_FILE="ui.glade"
 XXD_GLADE_OUTPUT="ui_glade.h"
 XXD_OPTS="-i $XXD_GLADE_FILE $XXD_GLADE_OUTPUT"
@@ -108,14 +141,15 @@ echo "-------------------------"
 #
 #
 # C++11
-#OPT_CPP11="-std=gnu++0x"
-OPT_CPP11="-std=c++0x"
-#OPT_CPP11="-std=c++11"
+#OPT_CPPFLAGS="-std=gnu++0x"
+#OPT_CPPFLAGS="-std=c++0x"
+#OPT_CPPFLAGS="-std=c++11"
+OPT_CPPFLAGS="-std=c++14"
 OPT_LIBS_ALL="-D__LINUX__	\
 	-D__DEBUG_MODE__ \
 	$SRC_IN_LIB_PATH_ALL $OPT_LIBS	\
 	$OPT_LIB_GL $OPT_LIB_GTKGL		\
-	$OPT_CPP11	\
+	$OPT_CPPFLAGS \
 "
 
 
@@ -132,26 +166,26 @@ OUTPUT=$1
 INPUT=$2
 
 
-echo -ne '
-if [ -z "$1" ]; then
-	echo 'Usage: $0 [filename] [option]'
-	echo ''
-	echo '-g	build as debug mode'
-	exit
-fi
-
-case "$2" in
-	-g)
-		OPT_DEBUG="-g"
-esac
-' >> /dev/null
-
-if [ -z "$1" ] || [ -z "$2" ]; then
-	echo $0
-	echo "Usage: sh $0 {output} {input}"
-	echo ""
-	exit
-fi
+#echo -ne '
+#if [ -z "$1" ]; then
+#	echo 'Usage: $0 [filename] [option]'
+#	echo ''
+#	echo '-g	build as debug mode'
+#	exit
+#fi
+#
+#case "$2" in
+#	-g)
+#		OPT_DEBUG="-g"
+#esac
+#' >> /dev/null
+#
+#if [ -z "$1" ] || [ -z "$2" ]; then
+#	echo $0
+#	echo "Usage: sh $0 {output} {input}"
+#	echo ""
+#	exit
+#fi
 
 
 # RUN

@@ -100,10 +100,16 @@ namespace g_FuncSignalHandler {
 	void on_text_font_dialog_open(GtkWidget* widget, gpointer user_data);
 	void on_text_font_color_dialog_open(GtkWidget* widget, gpointer user_data);
 	void on_text_bg_image_dialog_open(GtkWidget* widget, gpointer user_data);
-	void on_event_text_font_dialog_open(GtkFontSelectionDialog* dlg, gint response,
-			gpointer user_data);
-	void on_event_text_font_color_dialog_open(GtkFontSelectionDialog* dlg, gint response,
-			gpointer user_data);
+#ifdef __GTKv2__
+	void on_event_text_font_dialog_open(GtkFontSelectionDialog* dlg, gint response, gpointer user_data);
+	void on_event_text_font_color_dialog_open(GtkFontSelectionDialog* dlg, gint response, gpointer user_data);
+#elif __GTKv3__
+	void on_event_text_font_dialog_open(GtkFontChooser* dlg, gint response, gpointer user_data);
+	void on_event_text_font_color_dialog_open(GtkColorSelectionDialog* dlg, gint response, gpointer user_data);
+	//void on_event_text_font_color_dialog_open(GtkFontSelectionDialog* dlg, gint response, gpointer user_data);
+	//void on_event_text_font_color_dialog_open(GtkColorChooser* dlg, gint response, gpointer user_data);
+#else
+#endif
 
 
 	// Keyboard & Mouse Event

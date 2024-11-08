@@ -417,7 +417,7 @@ void CAtp3::release_popup_menu(void) {
 
 	m_show_popup_menu = false;
 
-	if ( m_pWidgets->pPopupMenu ) {
+	if ( m_pWidgets->pPopupMenu != NULL ) {
 		gtk_widget_hide( m_pWidgets->pPopupMenu );
 		gtk_widget_destroy( m_pWidgets->pPopupMenu );
 		m_pWidgets->pPopupMenu = NULL;
